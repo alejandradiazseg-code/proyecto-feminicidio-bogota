@@ -1,0 +1,21 @@
+.env
+data/raw/
+backup/*.sql
+backup/*.backup
+__pycache__/
+*.pyc
+venv/
+.DS_Store
+
+# Archivos temporales de ejecución
+run_output*.txt
+run_pid*.txt
+run_scripts*.sh
+run_output.txt
+final_output_3b.txt
+*.backup
+*.bak
+data/processed/
+final_output_3b.txt
+run_final_3b.sh
+mer_consolidado_28_entidades.html

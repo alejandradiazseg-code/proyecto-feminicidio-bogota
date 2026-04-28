@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Observatorio de Violencia Feminicida - Bogotá</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --morado-oscuro: #4a148c;
+            --morado-medio: #6a1b9a;
+            --morado-claro: #9c27b0;
+            --lila: #e1bee7;
+            --blanco: #ffffff;
+            --gris-oscuro: #263238;
+            --gris-medio: #546e7a;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8f5fb; color: var(--gris-oscuro); }
+
+        /* NAVBAR */
+        .navbar-custom { background: var(--morado-oscuro); padding: 1rem 2rem; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 12px rgba(74,20,140,0.4); }
+        .navbar-custom .brand { color: white; font-size: 1.1rem; font-weight: 600; letter-spacing: 0.5px; }
+        .navbar-custom .nav-links a { color: rgba(255,255,255,0.8); text-decoration: none; margin-left: 2rem; font-size: 0.9rem; transition: color 0.2s; }
+        .navbar-custom .nav-links a:hover { color: white; }
+
+        /* HERO */
+        .hero { position: relative; height: 90vh; min-height: 600px; overflow: hidden; display: flex; align-items: center; }
+        .hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+        .hero-overlay { position: absolute; inset: 0; background: linear-gradient(135deg, rgba(74,20,140,0.85) 0%, rgba(74,20,140,0.6) 50%, rgba(0,0,0,0.3) 100%); }
+        .hero-content { position: relative; z-index: 2; padding: 0 4rem; max-width: 700px; }
+        .hero-tag { display: inline-block; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 1.5rem; }
+        .hero-title { font-size: 3.2rem; font-weight: 700; color: white; line-height: 1.2; margin-bottom: 1rem; }
+        .hero-title span { color: #ce93d8; }
+        .hero-subtitle { font-size: 1.15rem; color: rgba(255,255,255,0.85); line-height: 1.7; margin-bottom: 2rem; }
+        .hero-stats { display: flex; gap: 2.5rem; }
+        .hero-stat-num { font-size: 2.2rem; font-weight: 700; color: #ce93d8; display: block; }
+        .hero-stat-label { font-size: 0.8rem; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* SECCIONES */
+        .seccion { padding: 4rem 2rem; }
+        .seccion-titulo { font-size: 1.8rem; font-weight: 700; color: var(--morado-oscuro); margin-bottom: 0.5rem; }
+        .seccion-subtitulo { color: var(--gris-medio); margin-bottom: 2.5rem; font-size: 0.95rem; }
+        .divisor { width: 60px; height: 4px; background: var(--morado-claro); border-radius: 2px; margin-bottom: 1rem; }
+
+        /* KPIs */
+        .kpi-card { background: white; border-radius: 12px; padding: 1.8rem; border-left: 5px solid var(--morado-claro); box-shadow: 0 4px 20px rgba(106,27,154,0.08); transition: transform 0.2s, box-shadow 0.2s; height: 100%; }
+        .kpi-card:hover { transform: translateY(-4px); box-shadow: 0 8px 30px rgba(106,27,154,0.15); }
+        .kpi-numero { font-size: 2.8rem; font-weight: 700; color: var(--morado-oscuro); line-height: 1; margin-bottom: 0.5rem; }
+        .kpi-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--gris-medio); margin-bottom: 0.3rem; }
+        .kpi-detalle { font-size: 0.85rem; color: var(--morado-claro); font-weight: 500; }
+
+        /* MAPA */
+        #mapa { height: 580px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); } #mapa-seccion { min-height: auto; } .leaflet-container { background: #e8f4f8 !important; }
+        .panel-filtros { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 20px rgba(106,27,154,0.08); height: fit-content; }
+        .panel-titulo { font-size: 0.95rem; font-weight: 600; color: var(--morado-oscuro); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--lila); }
+        .btn-capa { border: 2px solid var(--lila); color: var(--morado-medio); background: white; border-radius: 8px; padding: 0.4rem 0.8rem; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; margin-bottom: 0.5rem; width: 100%; text-align: left; }
+        .btn-capa.activo, .btn-capa:hover { background: var(--morado-oscuro); color: white; border-color: var(--morado-oscuro); }
+        .leyenda { background: white; padding: 12px 16px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.15); font-size: 0.8rem; line-height: 2; }
+        .leyenda-color { display: inline-block; width: 16px; height: 16px; margin-right: 8px; vertical-align: middle; border-radius: 3px; opacity: 0.8; }
+
+        /* GRÁFICAS */
+        .chart-card { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 20px rgba(106,27,154,0.08); height: 100%; }
+        .chart-titulo { font-size: 0.9rem; font-weight: 600; color: var(--morado-oscuro); margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--lila); }
+        .chart-contexto { font-size: 0.8rem; color: var(--gris-medio); margin-bottom: 1rem; line-height: 1.5; }
+
+        /* CAJA DE HALLAZGO FISCALÍA */
+        .hallazgo-fiscalia {
+            background: linear-gradient(135deg, #f3e5f5 0%, #e8eaf6 100%);
+            border-radius: 16px;
+            padding: 2rem;
+            border-left: 6px solid var(--morado-oscuro);
+            margin-bottom: 2rem;
+        }
+        .hallazgo-fiscalia h5 { color: var(--morado-oscuro); font-weight: 700; margin-bottom: 1rem; }
+        .hallazgo-stat {
+            background: white;
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(106,27,154,0.1);
+        }
+        .hallazgo-stat .num { font-size: 1.8rem; font-weight: 700; color: var(--morado-oscuro); }
+        .hallazgo-stat .lbl { font-size: 0.72rem; text-transform: uppercase; color: var(--gris-medio); letter-spacing: 0.5px; }
+
+        /* ZONA DONA */
+        .dona-contexto {
+            font-size: 0.85rem;
+            color: var(--gris-medio);
+            line-height: 1.6;
+            margin-top: 1rem;
+        }
+        .zona-badge {
+            display: inline-block;
+            width: 12px; height: 12px;
+            border-radius: 2px;
+            margin-right: 4px;
+            vertical-align: middle;
+        }
+
+        /* INDICADORES NEGLIGENCIA */
+        .bg-negligencia { background: linear-gradient(135deg, #f3e5f5 0%, #fce4ec 100%); }
+        .indicador-card { background: white; border-radius: 16px; padding: 2rem; box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center; height: 100%; }
+        .indicador-icono { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.8rem; }
+        .indicador-numero { font-size: 2.5rem; font-weight: 700; margin-bottom: 0.3rem; }
+        .indicador-nombre { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; }
+        .indicador-desc { font-size: 0.8rem; color: var(--gris-medio); line-height: 1.5; }
+        .indicador-peor { font-size: 0.78rem; color: #c62828; font-weight: 600; margin-top: 0.5rem; }
+        .indicador-mejor { font-size: 0.78rem; color: #2e7d32; font-weight: 600; margin-top: 0.3rem; }
+        .indicador-formula {
+            background: #f8f5fb;
+            border-radius: 8px;
+            padding: 0.5rem 0.8rem;
+            font-size: 0.75rem;
+            color: var(--morado-medio);
+            font-style: italic;
+            margin-top: 0.7rem;
+            text-align: left;
+        }
+
+        /* PREVENCIÓN */
+        .bg-prevencion { background: var(--morado-oscuro); color: white; }
+        .bg-prevencion .seccion-titulo { color: white; }
+        .bg-prevencion .seccion-subtitulo { color: rgba(255,255,255,0.7); }
+        .prevencion-card { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 1.5rem; height: 100%; transition: background 0.2s; }
+        .prevencion-card:hover { background: rgba(255,255,255,0.15); }
+        .prevencion-icono { font-size: 2rem; margin-bottom: 1rem; }
+        .prevencion-titulo { font-size: 1rem; font-weight: 600; margin-bottom: 0.7rem; color: #ce93d8; }
+        .prevencion-texto { font-size: 0.85rem; color: rgba(255,255,255,0.8); line-height: 1.6; }
+        .alerta-señal { background: rgba(255,255,255,0.05); border-left: 3px solid #ce93d8; padding: 0.6rem 1rem; margin-bottom: 0.5rem; border-radius: 0 6px 6px 0; font-size: 0.85rem; }
+        .buscador-inst { background: rgba(255,255,255,0.1); border-radius: 12px; padding: 1.5rem; }
+        .inst-resultado { background: rgba(255,255,255,0.08); border-radius: 8px; padding: 1rem; margin-top: 0.5rem; font-size: 0.85rem; }
+        .inst-resultado .tipo-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.7rem; font-weight: 600; margin-bottom: 0.3rem; }
+
+        /* SELECT LOCALIDAD - fix letras blancas */
+        #select-localidad { background: rgba(255,255,255,0.15) !important; color: white !important; border-color: rgba(255,255,255,0.3) !important; }
+        #select-localidad option { background: #4a148c !important; color: white !important; }
+
+        /* FOOTER */
+        footer { background: #111111; color: #b0bec5; padding: 2.5rem 2rem; font-size: 0.85rem; }
+        footer h6 { color: white; margin-bottom: 0.7rem; }
+        footer a { color: #ce93d8; text-decoration: none; }
+        .footer-autoras { border-top: 1px solid #333; margin-top: 1.5rem; padding-top: 1rem; color: #90a4ae; font-size: 0.8rem; }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .hero-title { font-size: 2rem; }
+            .hero-content { padding: 0 2rem; }
+            .hero-stats { flex-direction: column; gap: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar-custom d-flex justify-content-between align-items-center">
+    <div class="brand"><i class="bi bi-geo-alt-fill me-2"></i>Observatorio de Violencia Feminicida · Bogotá</div>
+    <div class="nav-links d-none d-md-block">
+        <a href="#panorama">Panorama</a>
+        <a href="#mapa-seccion">Mapa</a>
+        <a href="#indicadores">Indicadores</a>
+        <a href="#prevencion">Prevención</a>
+    </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+    <img src="images/hero-justicia.png" alt="Mujeres exigiendo justicia" class="hero-img">
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+        <div class="hero-tag">Bases de Datos Espaciales · Bogotá D.C.</div>
+        <h1 class="hero-title">Violencia Feminicida<br><span>y Negligencia Institucional</span></h1>
+        <p class="hero-subtitle">Análisis espacial comparativo entre zonas de Bogotá 2015–2025. Datos integrados de Medicina Legal, SDMujer, Fiscalía General y oferta institucional distrital.</p>
+        <div class="hero-stats">
+            <div>
+                <span class="hero-stat-num" id="hero-homicidios">—</span>
+                <span class="hero-stat-label">Homicidios de mujeres<br>2015–2024</span>
+            </div>
+            <div>
+                <span class="hero-stat-num" id="hero-feminicidios">—</span>
+                <span class="hero-stat-label">Feminicidios forenses<br>identificados</span>
+            </div>
+            <div>
+                <span class="hero-stat-num" id="hero-riesgo">—</span>
+                <span class="hero-stat-label">Mujeres en riesgo<br>2025</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- SECCIÓN 1: PANORAMA -->
+<section class="seccion bg-white" id="panorama">
+    <div class="container-fluid">
+        <div class="divisor"></div>
+        <h2 class="seccion-titulo">Panorama General</h2>
+        <p class="seccion-subtitulo">Cifras consolidadas de violencia contra las mujeres en Bogotá · Múltiples fuentes oficiales</p>
+        <div class="row g-4" id="kpi-row">
+            <div class="col-md-3">
+                <div class="kpi-card">
+                    <div class="kpi-label">Homicidios de mujeres</div>
+                    <div class="kpi-numero" id="kpi-homicidios">—</div>
+                    <div class="kpi-detalle">Serie 2015–2024 · Medicina Legal</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card" style="border-left-color:#c62828;">
+                    <div class="kpi-label">Feminicidios forenses</div>
+                    <div class="kpi-numero" style="color:#c62828;" id="kpi-feminicidios">—</div>
+                    <div class="kpi-detalle">Clasificados por INMLCF · 2018–2024</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card" style="border-left-color:#f57c00;">
+                    <div class="kpi-label">Sin clasificación forense</div>
+                    <div class="kpi-numero" style="color:#f57c00;" id="kpi-sin-info">—</div>
+                    <div class="kpi-detalle">Casos sin circunstancia identificada</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card" style="border-left-color:#1565c0;">
+                    <div class="kpi-label">Peor índice institucional</div>
+                    <div class="kpi-numero" style="color:#1565c0; font-size:1.8rem;" id="kpi-peor">—</div>
+                    <div class="kpi-detalle" id="kpi-peor-valor">Casos por institución formal</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- HALLAZGO FISCALÍA -->
+        <div class="hallazgo-fiscalia mt-5">
+            <h5><i class="bi bi-search me-2"></i>Hallazgo clave · Cruce con datos de la Fiscalía General de la Nación</h5>
+            <p style="font-size:0.9rem; color:#555; margin-bottom:1.5rem;">
+                El cruce entre los homicidios de mujeres registrados por el Instituto Nacional de Medicina Legal (INMLCF)
+                y los procesos tipificados como feminicidio por la Fiscalía General de la Nación (período 2015–2024) revela
+                una brecha estructural de negligencia procesal en Bogotá D.C.:
+            </p>
+            <div class="row g-3 mb-3">
+                <div class="col-6 col-md-3">
+                    <div class="hallazgo-stat">
+                        <div class="num">1.053</div>
+                        <div class="lbl">Homicidios de mujeres<br>INMLCF 2015–2024</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="hallazgo-stat">
+                        <div class="num" style="color:#c62828;">253</div>
+                        <div class="lbl">Tipificados como<br>feminicidio · Fiscalía</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="hallazgo-stat">
+                        <div class="num" style="color:#e65100;">24%</div>
+                        <div class="lbl">Tasa de tipificación<br>jurídica</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="hallazgo-stat">
+                        <div class="num" style="color:#6a1b9a;">893</div>
+                        <div class="lbl">Tentativas registradas<br>por la Fiscalía</div>
+                    </div>
+                </div>
+            </div>
+            <p style="font-size:0.85rem; color:#555; line-height:1.7;">
+                <strong>¿Qué significa el 24%?</strong> De cada 100 mujeres asesinadas en Bogotá entre 2015 y 2024,
+                la Fiscalía General de la Nación tipificó formalmente como feminicidio solo 24 casos.
+                El <strong>76% restante (800 casos)</strong> no recibió reconocimiento jurídico del componente de género,
+                quedando clasificado bajo otras categorías penales. Esta brecha constituye el indicador más directo
+                de negligencia procesal medible con datos públicos disponibles.<br><br>
+                Adicionalmente, la Fiscalía registró <strong>893 tentativas de feminicidio</strong> en el mismo período
+                (3,5 tentativas por cada caso consumado tipificado), lo que evidencia que el sistema judicial identifica
+                la violencia feminicida en su fase previa, pero no logra prevenirla sistemáticamente.
+                La tasa de tipificación no mostró tendencia de mejora sostenida en los 10 años de vigencia de la
+                <strong>Ley 1761 de 2015</strong> (Ley Rosa Elvira Cely).
+                <em style="color:#888;">Fuente: Fiscalía General de la Nación · Dataset Conteo de Víctimas · Descarga abril 2026.
+                Nota: los datos de Fiscalía corresponden al total Bogotá D.C. sin desagregación por localidad.</em>
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- SECCIÓN 2: MAPA -->
+<section class="seccion" id="mapa-seccion" style="background:#f8f5fb;">
+    <div class="container-fluid">
+        <div class="divisor"></div>
+        <h2 class="seccion-titulo">Distribución Espacial</h2>
+        <p class="seccion-subtitulo">Mapa interactivo de Bogotá · Haz clic en una localidad para ver sus datos</p>
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div id="mapa"></div>
+            </div>
+            <div class="col-lg-4">
+                <div class="panel-filtros mb-3">
+                    <div class="panel-titulo"><i class="bi bi-layers me-2"></i>Capa del mapa</div>
+                    <button class="btn-capa activo" onclick="cambiarCapa('homicidios', this)"><i class="bi bi-circle-fill me-2" style="color:#9c27b0;"></i>Homicidios de mujeres</button>
+                    <button class="btn-capa" onclick="cambiarCapa('feminicidio', this)"><i class="bi bi-circle-fill me-2" style="color:#c62828;"></i>Feminicidios forenses</button>
+                    <button class="btn-capa" onclick="cambiarCapa('sin-info', this)"><i class="bi bi-circle-fill me-2" style="color:#f57c00;"></i>% Sin clasificación</button>
+                    <button class="btn-capa" onclick="cambiarCapa('via-formal', this)"><i class="bi bi-circle-fill me-2" style="color:#1565c0;"></i>Índice vía formal</button>
+                </div>
+                <div class="panel-filtros mb-3">
+                    <div class="panel-titulo"><i class="bi bi-building me-2"></i>Instituciones</div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" id="show-comisarias" checked><label class="form-check-label" for="show-comisarias"><span style="color:#d32f2f;">●</span> Comisarías de Familia (36)</label></div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" id="show-casas-justicia" checked><label class="form-check-label" for="show-casas-justicia"><span style="color:#f57c00;">●</span> Casas de Justicia (16)</label></div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" id="show-casas-igualdad" checked><label class="form-check-label" for="show-casas-igualdad"><span style="color:#0288d1;">●</span> Casas de Igualdad (21)</label></div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" id="show-cai"><label class="form-check-label" for="show-cai"><span style="color:#546e7a;">●</span> CAI Policía (153)</label></div>
+                </div>
+                <!-- DONA CON CONTEXTO -->
+                <div class="chart-card">
+                    <div class="chart-titulo"><i class="bi bi-pie-chart me-2"></i>Distribución de casos por zona</div>
+                    <p class="chart-contexto">
+                        El siguiente gráfico muestra la distribución porcentual de los homicidios de mujeres registrados
+                        entre 2015 y 2024 según la zona geográfica de Bogotá. La <strong style="color:#ef5350;">Zona Sur</strong>
+                        concentra consistentemente la mayor proporción de casos, mientras que la
+                        <strong style="color:#66bb6a;">Zona Rural</strong> (Sumapaz) registra los valores más bajos
+                        dada su baja densidad poblacional.
+                    </p>
+                    <canvas id="chart-zonas"></canvas>
+                    <div class="dona-contexto" id="dona-detalle">
+                        <!-- Se llena dinámicamente -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- SECCIÓN 3: ANÁLISIS TEMPORAL -->
+<section class="seccion bg-white">
+    <div class="container-fluid">
+        <div class="divisor"></div>
+        <h2 class="seccion-titulo">Análisis Temporal</h2>
+        <p class="seccion-subtitulo">Evolución de la violencia letal contra las mujeres 2015–2024 por zona de Bogotá · Fuente: INMLCF</p>
+        <div class="row g-4">
+            <div class="col-lg-7">
+                <div class="chart-card">
+                    <div class="chart-titulo"><i class="bi bi-graph-up me-2"></i>Serie temporal por zona (2015–2024)</div>
+                    <p class="chart-contexto">
+                        Cada línea representa el total anual de homicidios de mujeres en una de las cuatro zonas de Bogotá.
+                        La <strong style="color:#ef5350;">Zona Sur</strong> mantiene una brecha persistente con respecto
+                        a las demás zonas durante toda la serie. El <strong>mínimo histórico</strong> ocurrió en 2023
+                        (89 casos en Bogotá total), seguido de un <strong>repunte preocupante en 2024</strong>
+                        (122 casos, +37% respecto a 2023). Pasa el cursor sobre las líneas para ver los valores exactos por año.
+                    </p>
+                    <canvas id="chart-serie"></canvas>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="chart-card">
+                    <div class="chart-titulo"><i class="bi bi-bar-chart-horizontal me-2"></i>Top 10 · Índice de desierto institucional (vía formal)</div>
+                    <p class="chart-contexto">
+                        Este índice mide cuántos homicidios de mujeres acumula cada institución formal de denuncia
+                        (Comisaría de Familia + Casa de Justicia) en el período 2015–2024.
+                        <strong>Un índice más alto indica mayor presión sobre el sistema formal</strong> y menor
+                        disponibilidad institucional relativa. El color de cada barra corresponde a la zona.
+                        <span style="color:#ef5350;">■</span> Sur &nbsp;
+                        <span style="color:#29b6f6;">■</span> Norte &nbsp;
+                        <span style="color:#ffa726;">■</span> Centro
+                    </p>
+                    <canvas id="chart-indicador"></canvas>
+                    <p class="chart-contexto mt-2" id="top10-highlight"><!-- dinámico --></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- SECCIÓN 4: INDICADORES DE NEGLIGENCIA -->
+<section class="seccion bg-negligencia" id="indicadores">
+    <div class="container-fluid">
+        <div class="divisor"></div>
+        <h2 class="seccion-titulo">Indicadores de Negligencia Institucional</h2>
+        <p class="seccion-subtitulo">Tres proxies construidos a partir de datos oficiales para medir dimensiones diferenciadas de la negligencia procesal y administrativa en Bogotá</p>
+
+        <!-- Explicación metodológica -->
+        <div class="alert" style="background:white; border-left:5px solid var(--morado-oscuro); border-radius:10px; padding:1.2rem 1.5rem; margin-bottom:2rem; font-size:0.88rem; color:#444; line-height:1.7;">
+            <strong>¿Qué es un proxy de negligencia?</strong> Como los datos individuales de cada caso no son de acceso público,
+            construimos <em>indicadores indirectos</em> (proxies) usando datos oficiales disponibles. Cada indicador mide
+            una dimensión diferente: la disponibilidad de instituciones, la calidad del registro forense, y la efectividad
+            del sistema de protección preventiva. Los indicadores se muestran para la peor y la mejor localidad
+            para ilustrar la brecha territorial.
+        </div>
+
+        <div class="row g-4">
+            <!-- Indicador 1: Desierto institucional -->
+            <div class="col-md-4">
+                <div class="indicador-card">
+                    <div class="indicador-icono" style="background:#f3e5f5;">⚖️</div>
+                    <div class="indicador-numero" style="color:#6a1b9a;" id="ind-via-formal">—</div>
+                    <div class="indicador-nombre" style="color:#6a1b9a;">Índice de desierto institucional</div>
+                    <div class="indicador-desc">
+                        Mide cuántos homicidios de mujeres (2015–2024) debe absorber, en promedio,
+                        cada institución formal de la ruta de denuncia (Comisarías de Familia + Casas de Justicia)
+                        en una localidad. Un valor alto indica que la oferta institucional es
+                        insuficiente frente a la magnitud de la violencia registrada.
+                    </div>
+                    <div class="indicador-formula">Fórmula: homicidios 2015–2024 ÷ (N° Comisarías + N° Casas de Justicia)</div>
+                    <div class="indicador-peor" id="ind-via-formal-peor">—</div>
+                    <div class="indicador-mejor" id="ind-via-formal-mejor">—</div>
+                </div>
+            </div>
+
+            <!-- Indicador 2: Negligencia forense -->
+            <div class="col-md-4">
+                <div class="indicador-card">
+                    <div class="indicador-icono" style="background:#fce4ec;">🚨</div>
+                    <div class="indicador-numero" style="color:#c62828;" id="ind-sin-info">—</div>
+                    <div class="indicador-nombre" style="color:#c62828;">Índice de negligencia forense</div>
+                    <div class="indicador-desc">
+                        Porcentaje de homicidios de mujeres en los que el INMLCF no pudo
+                        determinar la circunstancia del hecho (campo "sin información").
+                        Un porcentaje alto refleja vacíos sistemáticos en el registro forense
+                        y dificulta la tipificación jurídica del feminicidio.
+                        Bogotá total: <strong>63%</strong> de los casos sin circunstancia identificada.
+                    </div>
+                    <div class="indicador-formula">Fórmula: casos "sin información" ÷ total homicidios × 100</div>
+                    <div class="indicador-peor" id="ind-sin-info-peor">—</div>
+                    <div class="indicador-mejor" id="ind-sin-info-mejor">—</div>
+                </div>
+            </div>
+
+            <!-- Indicador 3: Brecha alerta-muerte -->
+            <div class="col-md-4">
+                <div class="indicador-card">
+                    <div class="indicador-icono" style="background:#e8f5e9;">⚠️</div>
+                    <div class="indicador-numero" style="color:#2e7d32;" id="ind-brecha">—</div>
+                    <div class="indicador-nombre" style="color:#2e7d32;">Brecha alerta–muerte</div>
+                    <div class="indicador-desc">
+                        De cada 100 mujeres identificadas en situación de riesgo de feminicidio
+                        por el sistema de alertas de la SDMujer (2025), cuántas fueron asesinadas.
+                        Este indicador mide la falla del sistema preventivo: si una mujer está
+                        identificada como en riesgo y aun así es asesinada, el sistema de
+                        seguimiento no funcionó efectivamente.
+                    </div>
+                    <div class="indicador-formula">Fórmula: asesinadas 2025 ÷ mujeres en riesgo 2025 × 100</div>
+                    <div class="indicador-peor" id="ind-brecha-peor">—</div>
+                    <div class="indicador-mejor" id="ind-brecha-mejor">—</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Índice seguridad nocturna -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div style="background:white; border-radius:16px; padding:1.5rem; box-shadow:0 4px 20px rgba(0,0,0,0.08);">
+                    <h6 style="color:var(--morado-oscuro); font-weight:700; margin-bottom:0.5rem;">
+                        🌙 Condiciones territoriales: Índice de Seguridad Nocturna para Mujeres
+                    </h6>
+                    <p style="font-size:0.85rem; color:#555; line-height:1.7; margin-bottom:0;">
+                        El Índice de Seguridad Nocturna (SDMujer/IDECA) evalúa las condiciones del entorno urbano
+                        nocturno para las mujeres en vías, arterias y ciclorrutas de Bogotá, considerando variables como
+                        <strong>cobertura de iluminación pública</strong>, visibilidad, presencia de personas, acceso a transporte
+                        público y senderos seguros. A mayor índice (escala 1–5), mejores condiciones de seguridad nocturna.
+                        Entre 2015 y 2019, la <strong>Zona Sur</strong> fue la que más mejoró en este indicador (+0.89 puntos),
+                        superando en 2019 el índice de la Zona Norte (+0.74). Sin embargo, esta mejora en infraestructura
+                        no se tradujo en una reducción equivalente de homicidios de mujeres en el Sur,
+                        lo que <strong>refuerza la hipótesis de que la negligencia procesal e institucional —y no solo
+                        las condiciones del entorno físico— es un factor central</strong> en la persistencia de la violencia feminicida
+                        en esta zona. <em style="color:#888;">Fuente: Secretaría Distrital de la Mujer · Cortes 2015 y 2019.
+                        Última medición disponible: septiembre 2019.</em>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- SECCIÓN 5: PREVENCIÓN -->
+<section class="seccion bg-prevencion" id="prevencion">
+    <div class="container-fluid">
+        <div class="divisor" style="background:#ce93d8;"></div>
+        <h2 class="seccion-titulo">Prevención y Ruta de Acción</h2>
+        <p class="seccion-subtitulo">Basado en los hallazgos del análisis espacial · Bogotá 2025</p>
+        <div class="row g-4 mb-5">
+            <div class="col-lg-4">
+                <div class="prevencion-card">
+                    <div class="prevencion-icono">🔴</div>
+                    <div class="prevencion-titulo">Señales de alerta identificadas</div>
+                    <p class="prevencion-texto mb-3">El análisis forense de Medicina Legal identificó estas circunstancias en los homicidios de mujeres en Bogotá (dataset vtub-3de2, 2015–2024):</p>
+                    <div class="alerta-señal">👫 Violencia de pareja: <strong>80 casos</strong></div>
+                    <div class="alerta-señal">⚡ Feminicidio explícito: <strong>77 casos</strong></div>
+                    <div class="alerta-señal">💔 Conflicto de pareja: <strong>12 casos</strong></div>
+                    <div class="alerta-señal">🔞 Violencia sexual: <strong>3 casos</strong></div>
+                    <p class="prevencion-texto mt-3" style="font-style:italic;">El 63% de los casos carecen de clasificación de circunstancia, lo que representa un vacío de información forense sistemático que impide la correcta tipificación jurídica.</p>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="prevencion-card">
+                    <div class="prevencion-icono">📋</div>
+                    <div class="prevencion-titulo">Recomendaciones derivadas del análisis</div>
+                    <div class="prevencion-texto">
+                        <p class="mb-2">🏛️ <strong>Ciudad Bolívar, Kennedy y Usme</strong> presentan los mayores índices de desierto institucional. Se recomienda aumentar la oferta de Comisarías y Casas de Justicia en estas localidades.</p>
+                        <p class="mb-2">📊 <strong>Barrios Unidos y Chapinero</strong> presentan las mayores tasas de conversión riesgo→muerte en 2025. Requieren refuerzo urgente del sistema de seguimiento a mujeres en riesgo.</p>
+                        <p class="mb-2">📝 <strong>El 63% de casos sin clasificación</strong> requiere protocolos forenses estandarizados con perspectiva de género en todas las localidades.</p>
+                        <p class="mb-2">⚖️ <strong>La Candelaria</strong> es la única localidad urbana sin Comisaría de Familia, lo que representa un vacío institucional crítico.</p>
+                        <p>⚡ <strong>Solo el 24% de los homicidios</strong> de mujeres fue tipificado como feminicidio por la Fiscalía en 10 años de vigencia de la Ley 1761 de 2015. Se requiere fortalecimiento institucional para la aplicación efectiva del tipo penal.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="prevencion-card">
+                    <div class="prevencion-icono">🗺️</div>
+                    <div class="prevencion-titulo">¿Dónde pedir ayuda?</div>
+                    <p class="prevencion-texto mb-3">Selecciona tu localidad para ver las instituciones de atención disponibles:</p>
+                    <div class="buscador-inst">
+                        <select class="form-select form-select-sm mb-3" id="select-localidad">
+                            <option value="">Selecciona tu localidad...</option>
+                        </select>
+                        <div id="resultado-instituciones">
+                            <p style="color:rgba(255,255,255,0.5); font-size:0.8rem; text-align:center;">Selecciona una localidad para ver las instituciones disponibles</p>
+                        </div>
+                    </div>
+                    <div class="mt-3 p-3" style="background:rgba(206,147,216,0.2); border-radius:8px;">
+                        <p class="prevencion-texto" style="font-size:0.8rem;">
+                            📞 <strong>Línea Mujer:</strong> 195<br>
+                            🆘 <strong>Emergencias:</strong> 123<br>
+                            ⚖️ <strong>Fiscalía:</strong> 122<br>
+                            🏥 <strong>Línea Violencia Sexual:</strong> 01 8000 112 440
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-4">
+                <h6>Observatorio de Violencia Feminicida · Bogotá</h6>
+                <p>Proyecto académico — Bases de Datos Espaciales<br>Análisis de negligencia procesal y administrativa</p>
+            </div>
+            <div class="col-md-4">
+                <h6>Fuentes de datos</h6>
+                <p>IDECA · Datos Abiertos Bogotá<br>
+                Medicina Legal (INMLCF) · OMEG-SDMujer<br>
+                Fiscalía General de la Nación · Datos Abiertos Colombia</p>
+            </div>
+            <div class="col-md-4">
+                <h6>Metodología</h6>
+                <p>PostgreSQL 16 + PostGIS 3.4<br>
+                FastAPI · Leaflet.js · Chart.js<br>
+                Serie histórica 2015–2025</p>
+            </div>
+        </div>
+        <div class="footer-autoras">
+            <strong style="color:white;">Elaborado por:</strong>
+            Maria Alejandra Segura Díaz (Cód. 20212025003) &nbsp;·&nbsp; Juan David Padilla Serpa (Cód. 20212025048) &nbsp;·&nbsp;
+            Bases de Datos Espaciales · Abril 2026
+        </div>
+    </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

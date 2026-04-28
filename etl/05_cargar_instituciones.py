@@ -1,0 +1,100 @@
+import os
+import requests
+import psycopg2
+import psycopg2.extras
+import pandas as pd
+import geopandas as gpd
+from shapely.geometry import Point
+from dotenv import load_dotenv
+
+DATA_RAW_DIR = "data/raw"
+
+FUENTES = {
+    'COMISARIA_FAMILIA': 'https://datosabiertos.bogota.gov.co/dataset/16f59d0f-f37b-4297-b2b7-3e1fbcc406cc/resource/97a96ebb-0e8e-4c98-bbd5-6633db251eba/download/acceso-a-la-justicia-comisarias-de-familia.geojson',
+    'CASA_JUSTICIA': 'https://datosabiertos.bogota.gov.co/dataset/7a7f4b3d-c01e-4e0d-a5fc-89fc3eacefc3/resource/b5f1a08a-f21c-4208-862f-46d331cc5a3a/download/casajusticia.geojson',
+    'CASA_IGUALDAD': 'https://datosabiertos.bogota.gov.co/dataset/76b44eeb-c825-4fd2-9318-ff2fc6becfec/resource/b64f469d-8204-428e-bdaa-bec7cee830eb/download/ciom_072025.geojson',
+    'CAI': 'https://datosabiertos.bogota.gov.co/dataset/bcc51101-762b-4e13-9455-f77502c75a0f/resource/202c5810-6880-43f8-b801-df70aaf6d237/download/comandoatencioninmediata.geojson'
+}
+
+def download_file(url, dest_path):
+    if not os.path.exists(dest_path):
+        print(f"Descargando {url}...")
+        r = requests.get(url)
+        r.raise_for_status()
+        with open(dest_path, 'wb') as f:
+            f.write(r.content)
+    return dest_path
+
+def main():
+    load_dotenv()
+    host = os.getenv("DB_HOST", "localhost")
+    port = os.getenv("DB_PORT", "5432")
+    dbname = os.getenv("DB_NAME")
+    user = os.getenv("DB_USER")
+    password = os.getenv("DB_PASSWORD")
+    
+    os.makedirs(DATA_RAW_DIR, exist_ok=True)
+    
+    conn = psycopg2.connect(host=host, port=port, dbname=dbname, user=user, password=password)
+    conn.set_client_encoding('UTF8') 
+    cur = conn.cursor()
+    
+    # 1. Extraer Localidades
+    print("Extrayendo Localidades para cruce espacial...")
+    gdf_loc = gpd.GeoDataFrame.from_postgis("SELECT id_localidad, nombre, geom FROM localidad", conn, geom_col='geom', crs=4326)
+
+    cur.execute("TRUNCATE TABLE institucion RESTART IDENTITY CASCADE;")
+    
+    instituciones_insert = []
+    
+    # 2. Iterar por tipos de instituciones y hacer Spatial Join
+    for tipo, url in FUENTES.items():
+        fname = f"{DATA_RAW_DIR}/{tipo.lower()}.geojson"
+        download_file(url, fname)
+        gdf = gpd.read_file(fname).to_crs(4326)
+        
+        print(f"\n--- {tipo} ---")
+        print(f"Total: {len(gdf)}")
+        print(f"Cols: {gdf.columns.tolist()}")
+
+        # Mapeo tentativo de columnas
+        name_col = next((c for c in ['CMFNombre', 'CJuNombre', 'CIO_Nombre', 'CAINOMBRE', 'nombre'] if c in gdf.columns), gdf.columns[1])
+        dir_col = next((c for c in ['CMFDirecci', 'CJuDirecci', 'CIO_Direcc', 'CAIDIR_SIT', 'direccion'] if c in gdf.columns), None)
+        tel_col = next((c for c in ['CMFTelefon', 'CJuTelefon', 'CIO_Telefo', 'CAITELEFON', 'telefono'] if c in gdf.columns), None)
+        horario_col = next((c for c in ['CMFHorario', 'CJuHorario', 'CIO_Horari', 'CAIHORARIO', 'horario'] if c in gdf.columns), None)
+        
+        # Spatial join para buscar id_localidad
+        joined = gpd.sjoin(gdf, gdf_loc, how='left', predicate='within')
+        
+        for idx, row in joined.iterrows():
+            id_loc = None if pd.isna(row['id_localidad']) else int(row['id_localidad'])
+            nombre = str(row[name_col]) if not pd.isna(row[name_col]) else f"{tipo}_{idx}"
+            direccion = str(row[dir_col]) if dir_col and not pd.isna(row[dir_col]) else None
+            telefono = str(row[tel_col]) if tel_col and not pd.isna(row[tel_col]) else None
+            horario = str(row[horario_col]) if horario_col and not pd.isna(row[horario_col]) else None
+            wkt = row['geometry'].wkt
+            
+            instituciones_insert.append((id_loc, tipo, nombre, direccion, telefono, horario, wkt))
+
+    # 3. Eliminar hardcode de Casa de Todas
+    # NOTA METODOLÓGICA: Casa de Todas fue excluida del análisis. 
+    # Su misión es específicamente atender a mujeres que ejercen Actividades Sexuales Pagadas (ASP), 
+    # por lo que no es una ruta formal de atención general a violencias contra mujeres/feminicidio.
+    
+    print("\nInsertando en BD...")
+    psycopg2.extras.execute_values(cur, 
+        "INSERT INTO institucion (id_localidad, tipo, nombre, direccion, telefono, horario_atencion, geom) VALUES %s", 
+        instituciones_insert,
+        template="(%s, %s, %s, %s, %s, %s, ST_GeomFromText(%s, 4326))"
+    )
+    
+    conn.commit()
+    cur.close()
+    conn.close()
+    
+    conteo = pd.Series([i[1] for i in instituciones_insert]).value_counts()
+    print("🚀 Instituciones insertadas:")
+    print(conteo)
+    
+if __name__ == "__main__":
+    main()
