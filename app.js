@@ -1,5 +1,42 @@
 const API_BASE = "http://localhost:8000/api";
 
+// Modo de datos:
+//  - En local (localhost) se consulta la API FastAPI sobre PostGIS.
+//  - Publicada (GitHub Pages) se leen los JSON exportados por
+//    etl/09_exportar_datos_web.py en frontend/data/.
+//  - ?datos=estaticos fuerza los JSON también en local (para probar).
+const ES_LOCAL = ["localhost", "127.0.0.1"].includes(location.hostname);
+const MODO_ESTATICO = !ES_LOCAL || new URLSearchParams(location.search).get("datos") === "estaticos";
+const RUTAS_ESTATICAS = {
+    "/indicadores/desierto-institucional": "data/desierto-institucional.json",
+    "/indicadores/negligencia-forense":    "data/negligencia-forense.json",
+    "/indicadores/brecha-riesgo-muerte":   "data/brecha-riesgo-muerte.json",
+    "/localidades/geojson":                "data/localidades.geojson",
+    "/feminicidio/por-zona":               "data/por-zona.json",
+    "/feminicidio/serie-temporal":         "data/serie-temporal.json",
+    "/instituciones":                      "data/instituciones.geojson",
+};
+const _cache = {};
+
+async function obtenerDatos(ruta) {
+    if (!MODO_ESTATICO) {
+        const r = await fetch(`${API_BASE}${ruta}`);
+        if (!r.ok) throw new Error(`${ruta}: HTTP ${r.status}`);
+        return r.json();
+    }
+    // Estático: /instituciones?tipo=X se filtra en el navegador
+    const [path, query] = ruta.split("?");
+    const archivo = RUTAS_ESTATICAS[path];
+    if (!archivo) throw new Error(`Sin archivo estático para ${path}`);
+    _cache[archivo] ??= fetch(archivo).then(r => {
+        if (!r.ok) throw new Error(`${archivo}: HTTP ${r.status}`);
+        return r.json();
+    });
+    const datos = await _cache[archivo];
+    const tipo = new URLSearchParams(query || "").get("tipo");
+    return tipo ? { ...datos, features: datos.features.filter(f => f.properties.tipo === tipo) } : datos;
+}
+
 const COLORES_ZONA = {
     "Norte": "#29b6f6", "Sur": "#ef5350",
     "Centro": "#ffa726", "Rural": "#66bb6a"
@@ -36,13 +73,13 @@ function inicializarMapa() {
 async function cargarTodo() {
     try {
         const [indic, neglig, brecha, geojson, porZona, serie, instituciones] = await Promise.all([
-            fetch(`${API_BASE}/indicadores/desierto-institucional`).then(r => r.json()),
-            fetch(`${API_BASE}/indicadores/negligencia-forense`).then(r => r.json()),
-            fetch(`${API_BASE}/indicadores/brecha-riesgo-muerte`).then(r => r.json()),
-            fetch(`${API_BASE}/localidades/geojson`).then(r => r.json()),
-            fetch(`${API_BASE}/feminicidio/por-zona`).then(r => r.json()),
-            fetch(`${API_BASE}/feminicidio/serie-temporal`).then(r => r.json()),
-            fetch(`${API_BASE}/instituciones`).then(r => r.json())
+            obtenerDatos("/indicadores/desierto-institucional"),
+            obtenerDatos("/indicadores/negligencia-forense"),
+            obtenerDatos("/indicadores/brecha-riesgo-muerte"),
+            obtenerDatos("/localidades/geojson"),
+            obtenerDatos("/feminicidio/por-zona"),
+            obtenerDatos("/feminicidio/serie-temporal"),
+            obtenerDatos("/instituciones")
         ]);
 
         datosIndicadores = indic;
@@ -69,7 +106,9 @@ async function cargarTodo() {
 
     } catch (err) {
         console.error("Error:", err);
-        alert("Error al conectar con el backend. Verifica que FastAPI esté en http://localhost:8000");
+        alert(MODO_ESTATICO
+            ? "No se pudieron cargar los datos del observatorio. Recarga la página."
+            : "Error al conectar con el backend. Verifica que FastAPI esté en http://localhost:8000 (o abre la página con ?datos=estaticos).");
     }
 }
 
@@ -127,7 +166,10 @@ function actualizarIndicadoresNegligencia() {
     if (conSI.length > 0) {
         const peorSI  = conSI.reduce((m, d) => d.pct_sin_clasificacion > m.pct_sin_clasificacion ? d : m);
         const mejorSI = conSI.reduce((m, d) => d.pct_sin_clasificacion < m.pct_sin_clasificacion ? d : m);
-        document.getElementById("ind-sin-info").textContent = "63%";  // Bogotá total
+        // Bogotá total, calculado con los mismos datos de la tabla
+        const totSI  = datosNegligencia.reduce((s, d) => s + (d.sin_clasificacion || 0), 0);
+        const totHom = datosNegligencia.reduce((s, d) => s + (d.homicidios_total || 0), 0);
+        document.getElementById("ind-sin-info").textContent = totHom ? fmtNum(totSI / totHom * 100) + " %" : "—";
         document.getElementById("ind-sin-info-peor").textContent =
             `⬆ Peor: ${peorSI.localidad} (${peorSI.pct_sin_clasificacion}%)`;
         document.getElementById("ind-sin-info-mejor").textContent =
@@ -248,7 +290,7 @@ function cambiarCapa(nueva, btn) {
 async function cargarInstituciones() {
     const tipos = ["COMISARIA_FAMILIA", "CASA_JUSTICIA", "CASA_IGUALDAD", "CAI"];
     for (const tipo of tipos) {
-        const geojson = await fetch(`${API_BASE}/instituciones?tipo=${tipo}`).then(r => r.json());
+        const geojson = await obtenerDatos(`/instituciones?tipo=${tipo}`);
         capasInst[tipo] = L.geoJSON(geojson, {
             pointToLayer: (f, ll) => L.circleMarker(ll, {
                 radius: tipo === "CAI" ? 4 : 6,
