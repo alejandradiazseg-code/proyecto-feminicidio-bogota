@@ -157,6 +157,16 @@
         footer a { color: #ce93d8; text-decoration: none; }
         .footer-autoras { border-top: 1px solid #333; margin-top: 1.5rem; padding-top: 1rem; color: #90a4ae; font-size: 0.8rem; }
 
+        /* PANTALLAS GRANDES: escalar tipografía (todo está en rem) y limitar el ancho de lectura */
+        .seccion > .container-fluid, footer > .container-fluid { max-width: 1600px; margin: 0 auto; }
+        @media (min-width: 1400px) { html { font-size: 17px; } }
+        @media (min-width: 1700px) {
+            html { font-size: 18px; }
+            .hero-content { max-width: 820px; padding: 0 5rem; }
+            .hero-title { font-size: 3.6rem; }
+        }
+        @media (min-width: 2200px) { html { font-size: 20px; } }
+
         /* RESPONSIVE */
         @media (max-width: 768px) {
             .hero-title { font-size: 2rem; }
@@ -363,8 +373,8 @@
                         Cada línea representa el total anual de homicidios de mujeres en una de las cuatro zonas de Bogotá.
                         La <strong style="color:#ef5350;">Zona Sur</strong> mantiene una brecha persistente con respecto
                         a las demás zonas durante toda la serie. El <strong>mínimo histórico</strong> ocurrió en 2023
-                        (89 casos en Bogotá total), seguido de un <strong>repunte preocupante en 2024</strong>
-                        (122 casos, +37% respecto a 2023). Pasa el cursor sobre las líneas para ver los valores exactos por año.
+                        (88 casos con localidad identificada), seguido de un <strong>repunte preocupante en 2024</strong>
+                        (118 casos, +34 % respecto a 2023). Pasa el cursor sobre las líneas para ver los valores exactos por año.
                     </p>
                     <canvas id="chart-serie"></canvas>
                 </div>
@@ -513,7 +523,7 @@
                     <div class="prevencion-icono">📋</div>
                     <div class="prevencion-titulo">Recomendaciones derivadas del análisis</div>
                     <div class="prevencion-texto">
-                        <p class="mb-2">🏛️ <strong>Ciudad Bolívar, Kennedy y Usme</strong> presentan los mayores índices de desierto institucional. Se recomienda aumentar la oferta de Comisarías y Casas de Justicia en estas localidades.</p>
+                        <p class="mb-2">🏛️ <strong>Rafael Uribe Uribe, Ciudad Bolívar y Santa Fe</strong> presentan los mayores índices de desierto institucional, y <strong>La Candelaria</strong> no cuenta con ninguna Comisaría ni Casa de Justicia. Se recomienda aumentar la oferta de Comisarías y Casas de Justicia en estas localidades.</p>
                         <p class="mb-2">📊 <strong>Barrios Unidos y Chapinero</strong> presentan las mayores tasas de conversión riesgo→muerte en 2025. Requieren refuerzo urgente del sistema de seguimiento a mujeres en riesgo.</p>
                         <p class="mb-2">📝 <strong>El 63% de casos sin clasificación</strong> requiere protocolos forenses estandarizados con perspectiva de género en todas las localidades.</p>
                         <p class="mb-2">⚖️ <strong>La Candelaria</strong> es la única localidad urbana sin Comisaría de Familia, lo que representa un vacío institucional crítico.</p>
@@ -571,7 +581,7 @@
         </div>
         <div class="footer-autoras">
             <strong style="color:white;">Elaborado por:</strong>
-            Maria Alejandra Segura Díaz (Cód. 20212025003) &nbsp;·&nbsp; Juan David Padilla Serpa (Cód. 20212025048) &nbsp;·&nbsp;
+            Maria Alejandra Segura Díaz (Cód. 20212025003) &nbsp;·&nbsp;
             Bases de Datos Espaciales · Abril 2026
         </div>
     </div>
