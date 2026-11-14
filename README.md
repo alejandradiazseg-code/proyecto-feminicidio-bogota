@@ -44,6 +44,22 @@ python3 -m http.server 5500 --directory frontend
 
 No abras `index.html` con doble clic. Ábrelo por http://localhost:5500.
 
+## Publicar la web (GitHub Pages)
+
+La versión publicada no usa backend: lee los JSON de `frontend/data/`, que se exportan desde la base de datos. Cada vez que cambien los datos:
+
+```bash
+python3 etl/09_exportar_datos_web.py   # BD → frontend/data/*.json
+python3 etl/10_verificar_web.py        # fuentes = BD = JSON = cifras del HTML
+git add frontend && git commit -m "Actualizar datos web"
+git push origin main
+git subtree push --prefix frontend origin gh-pages   # publica la carpeta frontend/
+```
+
+En GitHub, en *Settings → Pages*, se elige *Deploy from a branch* con la rama `gh-pages` y la carpeta `/ (root)`.
+
+Para probar en local con los JSON, sin backend, abre http://localhost:5500/?datos=estaticos.
+
 ## Prueba de conexión
 Para probar que las librerías y la conexión a la base de datos funcionan, puedes usar el script de testeo:
 
