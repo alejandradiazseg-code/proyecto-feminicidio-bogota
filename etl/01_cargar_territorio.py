@@ -158,7 +158,7 @@ def main():
         psycopg2.extras.execute_values(cur,
             "INSERT INTO upl (codigo_upl, nombre, tipo_upl, geom) VALUES %s",
             upl_insert,
-            template="(%s, %s, %s, ST_GeomFromText(%s, 4326))"
+            template="(%s, %s, %s, ST_Multi(ST_GeomFromText(%s, 4326)))"
         )
         print(f"✔ UPLs insertadas: {len(upl_insert)}")
         

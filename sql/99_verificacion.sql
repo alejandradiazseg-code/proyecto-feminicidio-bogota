@@ -4,12 +4,13 @@
 -- Proyecto: Feminicidio Bogotá — Base de Datos Espacial
 -- =============================================================================
 
--- 1. Conteo total de tablas en schema public (esperado: 29)
-\echo '=== 1. CONTEO DE TABLAS (esperado: 29) ==='
+-- 1. Conteo total de tablas en schema public (esperado: 30, sin contar spatial_ref_sys)
+\echo '=== 1. CONTEO DE TABLAS (esperado: 30) ==='
 SELECT count(*) AS total_tablas
   FROM information_schema.tables
  WHERE table_schema = 'public'
-   AND table_type = 'BASE TABLE';
+   AND table_type = 'BASE TABLE'
+   AND table_name <> 'spatial_ref_sys';
 
 -- 2. Listado de todas las tablas
 \echo ''
@@ -19,13 +20,15 @@ SELECT tablename
  WHERE schemaname = 'public'
  ORDER BY tablename;
 
--- 3. Conteo de índices creados con prefijo idx_ (esperado: 37)
+-- 3. Conteo de índices (esperado: 45 idx_*, 79 en total, 7 GiST)
 \echo ''
-\echo '=== 3. CONTEO DE ÍNDICES idx_* (esperado: 37) ==='
-SELECT count(*) AS total_indices
+\echo '=== 3. CONTEO DE ÍNDICES (esperado: idx=45, total=79, gist=7) ==='
+SELECT count(*) FILTER (WHERE indexname LIKE 'idx_%')      AS idx,
+       count(*)                                           AS total,
+       count(*) FILTER (WHERE indexdef ILIKE '%USING gist%') AS gist
   FROM pg_indexes
  WHERE schemaname = 'public'
-   AND indexname LIKE 'idx_%';
+   AND tablename <> 'spatial_ref_sys';
 
 -- 4. Listado de índices
 \echo ''
@@ -36,7 +39,7 @@ SELECT tablename, indexname, indexdef
    AND indexname LIKE 'idx_%'
  ORDER BY tablename, indexname;
 
--- 5. Columnas de geometría registradas (esperado: 7 filas, todas SRID 4326)
+-- 5. Columnas de geometría (esperado: 7 filas, SRID 4326; zona/localidad/upl MULTIPOLYGON)
 \echo ''
 \echo '=== 5. GEOMETRY_COLUMNS (esperado: 7 filas, SRID 4326) ==='
 SELECT f_table_name, f_geometry_column, srid, type
@@ -76,6 +79,24 @@ SELECT conrelid::regclass AS tabla, count(*) AS num_fks
    AND connamespace = 'public'::regnamespace
  GROUP BY conrelid::regclass
  ORDER BY conrelid::regclass::text;
+
+-- 10. Reglas ON DELETE (esperado: RESTRICT=22, CASCADE=14, SET NULL=1)
+\echo ''
+\echo '=== 10. REGLAS ON DELETE (esperado: RESTRICT 22, CASCADE 14, SET NULL 1) ==='
+SELECT CASE confdeltype WHEN 'r' THEN 'RESTRICT' WHEN 'c' THEN 'CASCADE'
+                        WHEN 'n' THEN 'SET NULL' WHEN 'a' THEN 'NO ACTION'
+                        ELSE confdeltype::text END AS on_delete,
+       count(*) AS fks
+  FROM pg_constraint
+ WHERE contype = 'f'
+   AND connamespace = 'public'::regnamespace
+ GROUP BY 1
+ ORDER BY 1;
+
+-- 11. Catálogo de estratos sin duplicados (esperado: 6)
+\echo ''
+\echo '=== 11. ESTRATOS (esperado: 6) ==='
+SELECT count(*) AS estratos FROM estrato;
 
 -- =============================================================================
 \echo ''

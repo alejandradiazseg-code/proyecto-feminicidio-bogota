@@ -35,19 +35,22 @@ def main():
             print(f"Error: {e}")
             conn.rollback()
 
-    print("\n--- ST_Within UPL en Localidad (Revisando si UPLs se salen de su Localidad asignada) ---")
-    st_within_q = """
-    SELECT u.nombre AS upl, l.nombre AS loc
-    FROM upl u
-    JOIN localidad l ON u.id_localidad = l.id_localidad
-    WHERE ST_Within(ST_Centroid(u.geom), l.geom) = FALSE;
-    """
-    cur.execute(st_within_q)
-    falsos = cur.fetchall()
-    if not falsos:
-        print("✅ Todas las UPLs (evaluando por centroide) caen correctamente dentro del polígono de su Localidad.")
-    else:
-        print(f"⚠️ Hay {len(falsos)} UPLs con su centroide fuera del polígono directo de su Localidad: {falsos}")
+    # La relación UPL-Localidad es N:M (Modelo Físico §3.1): se resuelve con
+    # ST_Intersects. Se descartan contactos de solo borde exigiendo que la
+    # intersección cubra al menos el 1 % del área de la UPL.
+    print("\n--- Relación N:M UPL ↔ Localidad (intersección ≥ 1 % del área de la UPL) ---")
+    cur.execute("""
+        SELECT u.codigo_upl, u.nombre,
+               COUNT(*) AS localidades,
+               STRING_AGG(l.nombre, ', ' ORDER BY l.nombre) AS lista
+        FROM upl u
+        JOIN localidad l ON ST_Intersects(u.geom, l.geom)
+        WHERE ST_Area(ST_Intersection(u.geom, l.geom)) >= 0.01 * ST_Area(u.geom)
+        GROUP BY u.codigo_upl, u.nombre
+        ORDER BY localidades DESC, u.codigo_upl;
+    """)
+    for codigo, nombre, n, lista in cur.fetchall():
+        print(f"  {codigo:<6} {nombre:<10} {n} localidad(es): {lista}")
 
     cur.close()
     conn.close()

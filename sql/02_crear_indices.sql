@@ -1,6 +1,6 @@
 -- =============================================================================
 -- 02_crear_indices.sql
--- Índices espaciales GiST + Índices B-tree sobre FKs
+-- Índices espaciales GiST + Índices B-tree sobre FKs y columnas de consulta
 -- Proyecto: Feminicidio Bogotá — Base de Datos Espacial
 -- =============================================================================
 
@@ -37,9 +37,8 @@ CREATE INDEX IF NOT EXISTS idx_institucion_geom
 CREATE INDEX IF NOT EXISTS idx_localidad_id_zona
     ON localidad (id_zona);
 
--- UPL
-CREATE INDEX IF NOT EXISTS idx_upl_id_localidad
-    ON upl (id_localidad);
+-- UPL: sin índice de FK (relación N:M con localidad vía ST_Intersects,
+--      acelerada por idx_upl_geom e idx_localidad_geom).
 
 -- BARRIO
 CREATE INDEX IF NOT EXISTS idx_barrio_id_upl
@@ -95,6 +94,13 @@ CREATE INDEX IF NOT EXISTS idx_feminicidio_id_lugar
 
 CREATE INDEX IF NOT EXISTS idx_feminicidio_fecha_hecho
     ON feminicidio (fecha_hecho);
+
+-- FEMINICIDIO_AGREGADO (base de todos los indicadores del observatorio)
+CREATE INDEX IF NOT EXISTS idx_fem_agregado_localidad_anio
+    ON feminicidio_agregado (id_localidad, anio);
+
+CREATE INDEX IF NOT EXISTS idx_fem_agregado_fuente
+    ON feminicidio_agregado (fuente);
 
 -- VICTIMA_INDIRECTA
 CREATE INDEX IF NOT EXISTS idx_victima_indirecta_id_feminicidio
@@ -169,5 +175,9 @@ CREATE INDEX IF NOT EXISTS idx_actuacion_judicial_id_proceso
     ON actuacion_judicial (id_proceso);
 
 -- =============================================================================
--- Total: 7 GiST + 30 B-tree = 37 índices
+-- Este script: 7 GiST + 38 B-tree = 45 índices "idx_*".
+-- Más los índices implícitos que crea 01_crear_tablas.sql:
+--   30 PRIMARY KEY + 4 UNIQUE (localidad.codigo_localidad, upl.codigo_upl,
+--   estrato.nivel, feminicidio_agregado(id_localidad, anio, fuente))
+-- Total en la BD: 79 índices (7 GiST + 72 B-tree).
 -- =============================================================================

@@ -1,14 +1,23 @@
 -- =============================================================================
 -- 01_crear_tablas.sql
--- Modelo físico: 28 entidades del MER + 1 tabla puente (institucion_ruta)
+-- Modelo físico: 30 tablas (29 del MER + feminicidio_agregado como tabla auxiliar)
 -- Proyecto: Feminicidio Bogotá — Base de Datos Espacial
--- SRID: 4326 (WGS84) para todas las geometrías
--- Nota: UPZ renombrada a UPL (Unidades de Planeamiento Local, Bogotá 2022+)
+-- Motor: PostgreSQL 16 + PostGIS 3.4 · SRID 4326 (WGS84) en todas las geometrías
+--
+-- Fuente de verdad: "Modelo Físico" y "Diccionario de Datos" v1.0 (abril 2026).
+-- Decisiones clave reflejadas aquí:
+--   * UPL ↔ Localidad es N:M y se resuelve con ST_Intersects (upl NO tiene
+--     columna id_localidad ni FK física hacia localidad).
+--   * feminicidio_agregado almacena los conteos públicos por localidad/año/fuente.
+--   * Reglas ON DELETE según la tabla de integridad referencial del Modelo Físico.
+--
+-- ADVERTENCIA: este script BORRA y recrea todas las tablas. Úsalo solo para una
+-- instalación nueva. Para actualizar una BD existente sin perder datos, usa
+-- sql/migraciones/001_alinear_modelo_fisico.sql
 -- =============================================================================
 
--- =============================================================================
--- ROLLBACK BLOCK: permite re-ejecución limpia del script
--- =============================================================================
+BEGIN;
+
 DROP TABLE IF EXISTS actuacion_judicial CASCADE;
 DROP TABLE IF EXISTS proceso_penal CASCADE;
 DROP TABLE IF EXISTS contraorden CASCADE;
@@ -22,6 +31,7 @@ DROP TABLE IF EXISTS violencia_previa CASCADE;
 DROP TABLE IF EXISTS red_apoyo CASCADE;
 DROP TABLE IF EXISTS victima_indirecta CASCADE;
 DROP TABLE IF EXISTS feminicidio CASCADE;
+DROP TABLE IF EXISTS feminicidio_agregado CASCADE;
 DROP TABLE IF EXISTS agresor CASCADE;
 DROP TABLE IF EXISTS victima CASCADE;
 DROP TABLE IF EXISTS servicio_psicologico CASCADE;
@@ -39,46 +49,33 @@ DROP TABLE IF EXISTS tiempo CASCADE;
 DROP TABLE IF EXISTS estrato CASCADE;
 DROP TABLE IF EXISTS zona CASCADE;
 
--- Asegurar que PostGIS esté habilitado
 CREATE EXTENSION IF NOT EXISTS postgis;
 
 -- =============================================================================
--- GRUPO 1: Catálogos sin FKs
+-- MÓDULO TERRITORIO
 -- =============================================================================
 
 -- 1. ZONA
-CREATE TABLE IF NOT EXISTS zona (
+CREATE TABLE zona (
     id_zona     SERIAL PRIMARY KEY,
     nombre      VARCHAR(100) NOT NULL,
     descripcion TEXT,
     geom        GEOMETRY(MULTIPOLYGON, 4326)
 );
 
--- 2. ESTRATO
-CREATE TABLE IF NOT EXISTS estrato (
+-- 2. ESTRATO (catálogo estático de 6 niveles)
+CREATE TABLE estrato (
     id_estrato  SERIAL PRIMARY KEY,
-    nivel       INTEGER NOT NULL CHECK (nivel IN (1, 2, 3, 4, 5, 6)),
-    descripcion VARCHAR(100)
+    nivel       INTEGER NOT NULL CHECK (nivel BETWEEN 1 AND 6),
+    descripcion VARCHAR(100),
+    CONSTRAINT estrato_nivel_key UNIQUE (nivel)
 );
 
--- 3. TIEMPO (PK natural: fecha DATE)
-CREATE TABLE IF NOT EXISTS tiempo (
-    fecha           DATE PRIMARY KEY,
-    anio            INTEGER NOT NULL,
-    mes             INTEGER NOT NULL CHECK (mes BETWEEN 1 AND 12),
-    trimestre       INTEGER NOT NULL CHECK (trimestre BETWEEN 1 AND 4),
-    dia_semana      VARCHAR(15) NOT NULL,
-    es_fin_de_semana BOOLEAN NOT NULL DEFAULT FALSE
-);
-
--- =============================================================================
--- GRUPO 2: Territorio jerárquico
--- =============================================================================
-
--- 4. LOCALIDAD
-CREATE TABLE IF NOT EXISTS localidad (
+-- 3. LOCALIDAD
+CREATE TABLE localidad (
     id_localidad     SERIAL PRIMARY KEY,
-    id_zona          INTEGER NOT NULL REFERENCES zona(id_zona),
+    id_zona          INTEGER NOT NULL
+                     REFERENCES zona(id_zona) ON DELETE RESTRICT,
     codigo_localidad VARCHAR(10) NOT NULL UNIQUE,
     nombre           VARCHAR(100) NOT NULL,
     area_km2         NUMERIC(10, 2),
@@ -86,280 +83,343 @@ CREATE TABLE IF NOT EXISTS localidad (
     geom             GEOMETRY(MULTIPOLYGON, 4326)
 );
 
--- 5. UPL (antes UPZ — Unidades de Planeamiento Local)
-CREATE TABLE IF NOT EXISTS upl (
-    id_upl       SERIAL PRIMARY KEY,
-    id_localidad INTEGER NOT NULL REFERENCES localidad(id_localidad),
-    codigo_upl   VARCHAR(10) NOT NULL UNIQUE,
-    nombre       VARCHAR(100) NOT NULL,
-    tipo_upl     VARCHAR(50),
-    geom         GEOMETRY(POLYGON, 4326)
+-- 4. UPL (Unidades de Planeamiento Local, POT Decreto 555 de 2021)
+--    Relación N:M con localidad resuelta por ST_Intersects (sin FK física).
+CREATE TABLE upl (
+    id_upl     SERIAL PRIMARY KEY,
+    codigo_upl VARCHAR(10) NOT NULL UNIQUE,
+    nombre     VARCHAR(100) NOT NULL,
+    tipo_upl   VARCHAR(50),
+    geom       GEOMETRY(MULTIPOLYGON, 4326)
 );
 
--- 6. BARRIO
-CREATE TABLE IF NOT EXISTS barrio (
+-- 5. BARRIO
+CREATE TABLE barrio (
     id_barrio SERIAL PRIMARY KEY,
-    id_upl    INTEGER NOT NULL REFERENCES upl(id_upl),
+    id_upl    INTEGER NOT NULL
+              REFERENCES upl(id_upl) ON DELETE RESTRICT,
     nombre    VARCHAR(100) NOT NULL,
     geom      GEOMETRY(POLYGON, 4326)
 );
 
--- 7. MANZANA
-CREATE TABLE IF NOT EXISTS manzana (
+-- 6. MANZANA
+CREATE TABLE manzana (
     id_manzana     SERIAL PRIMARY KEY,
-    id_upl         INTEGER NOT NULL REFERENCES upl(id_upl),
-    id_estrato     INTEGER NOT NULL REFERENCES estrato(id_estrato),
+    id_upl         INTEGER NOT NULL
+                   REFERENCES upl(id_upl) ON DELETE RESTRICT,
+    id_estrato     INTEGER NOT NULL
+                   REFERENCES estrato(id_estrato) ON DELETE RESTRICT,
     codigo_manzana VARCHAR(30),
     geom           GEOMETRY(POLYGON, 4326)
 );
 
--- =============================================================================
--- GRUPO 3: Sociodemográfico de UPL
--- =============================================================================
-
--- 8. CONDICION_VIDA
-CREATE TABLE IF NOT EXISTS condicion_vida (
+-- 7. CONDICION_VIDA
+CREATE TABLE condicion_vida (
     id_condicion        SERIAL PRIMARY KEY,
-    id_upl              INTEGER NOT NULL REFERENCES upl(id_upl),
+    id_upl              INTEGER NOT NULL
+                        REFERENCES upl(id_upl) ON DELETE RESTRICT,
     anio_medicion       INTEGER NOT NULL,
-    ipm                 NUMERIC(5, 4),
-    desempleo_fem       NUMERIC(5, 4),
+    ipm                 NUMERIC(5, 4) CHECK (ipm BETWEEN 0 AND 1),
+    desempleo_fem       NUMERIC(5, 4) CHECK (desempleo_fem BETWEEN 0 AND 1),
     cobertura_educacion NUMERIC(5, 4),
     acceso_salud        NUMERIC(5, 4)
 );
 
--- 9. CONDICIONES_TERRITORIALES
-CREATE TABLE IF NOT EXISTS condiciones_territoriales (
+-- 8. CONDICIONES_TERRITORIALES (índice de seguridad nocturna SDMujer)
+CREATE TABLE condiciones_territoriales (
     id_cond_terr              SERIAL PRIMARY KEY,
-    id_upl                    INTEGER NOT NULL REFERENCES upl(id_upl),
-    anio_medicion             INTEGER NOT NULL,
-    indice_seguridad_nocturna NUMERIC(5, 4),
-    cobertura_iluminacion     NUMERIC(5, 4),
-    accesibilidad_transporte  NUMERIC(5, 4),
+    id_upl                    INTEGER NOT NULL
+                              REFERENCES upl(id_upl) ON DELETE RESTRICT,
+    anio_medicion             INTEGER NOT NULL CHECK (anio_medicion >= 2010),
+    indice_seguridad_nocturna NUMERIC(5, 4)
+                              CHECK (indice_seguridad_nocturna BETWEEN 1 AND 5),
+    cobertura_iluminacion     NUMERIC(5, 4)
+                              CHECK (cobertura_iluminacion BETWEEN 0 AND 1),
+    accesibilidad_transporte  NUMERIC(5, 4)
+                              CHECK (accesibilidad_transporte BETWEEN 0 AND 1),
     densidad_institucional    NUMERIC(5, 4),
     tipo_entorno_urbano       VARCHAR(50)
 );
 
--- =============================================================================
--- GRUPO 4: Lugar del hecho
--- =============================================================================
-
--- 10. LUGAR_HECHO
-CREATE TABLE IF NOT EXISTS lugar_hecho (
-    id_lugar       SERIAL PRIMARY KEY,
-    id_barrio      INTEGER NOT NULL REFERENCES barrio(id_barrio),
+-- 9. LUGAR_HECHO
+CREATE TABLE lugar_hecho (
+    id_lugar        SERIAL PRIMARY KEY,
+    id_barrio       INTEGER NOT NULL
+                    REFERENCES barrio(id_barrio) ON DELETE RESTRICT,
     direccion_aprox VARCHAR(200),
-    tipo_lugar     VARCHAR(80),
-    geom           GEOMETRY(POINT, 4326)
-);
-
--- =============================================================================
--- GRUPO 5: Institucional
--- =============================================================================
-
--- 11. INSTITUCION
-CREATE TABLE IF NOT EXISTS institucion (
-    id_institucion  SERIAL PRIMARY KEY,
-    id_localidad    INTEGER NOT NULL REFERENCES localidad(id_localidad),
-    tipo            VARCHAR(80) NOT NULL,
-    nombre          VARCHAR(200) NOT NULL,
-    direccion       VARCHAR(200),
-    telefono        VARCHAR(30),
-    horario_atencion VARCHAR(100),
+    tipo_lugar      VARCHAR(80),
     geom            GEOMETRY(POINT, 4326)
 );
 
--- 12. RUTA_ATENCION
-CREATE TABLE IF NOT EXISTS ruta_atencion (
-    id_ruta                  SERIAL PRIMARY KEY,
-    nombre_ruta              VARCHAR(150) NOT NULL,
-    tipo_violencia_aplicable VARCHAR(100),
-    entidad_coordinadora     VARCHAR(150)
-);
+-- =============================================================================
+-- MÓDULO TIEMPO
+-- =============================================================================
 
--- 13. INSTITUCION_RUTA (tabla puente M:N — no parte del MER conceptual original)
-CREATE TABLE IF NOT EXISTS institucion_ruta (
-    id_institucion INTEGER NOT NULL REFERENCES institucion(id_institucion),
-    id_ruta        INTEGER NOT NULL REFERENCES ruta_atencion(id_ruta),
-    PRIMARY KEY (id_institucion, id_ruta)
-);
-
--- 14. SERVICIO_PSICOLOGICO
-CREATE TABLE IF NOT EXISTS servicio_psicologico (
-    id_servicio    SERIAL PRIMARY KEY,
-    id_institucion INTEGER NOT NULL REFERENCES institucion(id_institucion),
-    tipo_atencion  VARCHAR(100),
-    modalidad      VARCHAR(80)
+-- 10. TIEMPO (PK natural: fecha)
+CREATE TABLE tiempo (
+    fecha            DATE PRIMARY KEY,
+    anio             INTEGER NOT NULL CHECK (anio BETWEEN 2010 AND 2030),
+    mes              INTEGER NOT NULL CHECK (mes BETWEEN 1 AND 12),
+    trimestre        INTEGER NOT NULL CHECK (trimestre BETWEEN 1 AND 4),
+    dia_semana       VARCHAR(15) NOT NULL,
+    es_fin_de_semana BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 -- =============================================================================
--- GRUPO 6: Personas
+-- MÓDULO PERSONA
 -- =============================================================================
 
--- 15. VICTIMA
-CREATE TABLE IF NOT EXISTS victima (
-    id_victima          SERIAL PRIMARY KEY,
-    id_barrio_res       INTEGER REFERENCES barrio(id_barrio),
-    edad_al_hecho       INTEGER,
-    nivel_educativo     VARCHAR(80),
-    ocupacion           VARCHAR(100),
-    etnia               VARCHAR(80),
+-- 11. VICTIMA
+CREATE TABLE victima (
+    id_victima           SERIAL PRIMARY KEY,
+    id_barrio_res        INTEGER
+                         REFERENCES barrio(id_barrio) ON DELETE SET NULL,
+    edad_al_hecho        INTEGER CHECK (edad_al_hecho >= 0),
+    nivel_educativo      VARCHAR(80),
+    ocupacion            VARCHAR(100),
+    etnia                VARCHAR(80),
     condicion_migratoria VARCHAR(80),
-    tiene_discapacidad  BOOLEAN DEFAULT FALSE,
-    tiene_hijos         BOOLEAN DEFAULT FALSE,
-    numero_hijos        INTEGER DEFAULT 0
+    tiene_discapacidad   BOOLEAN DEFAULT FALSE,
+    tiene_hijos          BOOLEAN DEFAULT FALSE,
+    numero_hijos         INTEGER DEFAULT 0 CHECK (numero_hijos >= 0)
 );
 
--- 16. AGRESOR
-CREATE TABLE IF NOT EXISTS agresor (
-    id_agresor              SERIAL PRIMARY KEY,
-    edad_al_hecho           INTEGER,
-    ocupacion               VARCHAR(100),
-    antecedentes_violencia  BOOLEAN DEFAULT FALSE,
-    porta_arma              BOOLEAN DEFAULT FALSE,
-    condicion_especial      VARCHAR(100),
-    estado_actual           VARCHAR(80)
+-- 12. AGRESOR
+CREATE TABLE agresor (
+    id_agresor             SERIAL PRIMARY KEY,
+    edad_al_hecho          INTEGER,
+    ocupacion              VARCHAR(100),
+    antecedentes_violencia BOOLEAN DEFAULT FALSE,
+    porta_arma             BOOLEAN DEFAULT FALSE,
+    condicion_especial     VARCHAR(100),
+    estado_actual          VARCHAR(80)
+);
+
+-- 13. RED_APOYO
+CREATE TABLE red_apoyo (
+    id_red                 SERIAL PRIMARY KEY,
+    id_victima             INTEGER NOT NULL
+                           REFERENCES victima(id_victima) ON DELETE CASCADE,
+    tipo_red               VARCHAR(80),
+    conocimiento_violencia BOOLEAN DEFAULT FALSE,
+    intento_proteccion     BOOLEAN DEFAULT FALSE
 );
 
 -- =============================================================================
--- GRUPO 7: Hecho central y relaciones
+-- MÓDULO HECHO
 -- =============================================================================
 
--- 17. FEMINICIDIO
-CREATE TABLE IF NOT EXISTS feminicidio (
+-- 14. FEMINICIDIO (registro individual; vacía hasta tener datos individuales)
+CREATE TABLE feminicidio (
     id_feminicidio      SERIAL PRIMARY KEY,
-    id_victima          INTEGER NOT NULL REFERENCES victima(id_victima),
-    id_agresor          INTEGER NOT NULL REFERENCES agresor(id_agresor),
-    id_lugar            INTEGER NOT NULL REFERENCES lugar_hecho(id_lugar),
-    fecha_hecho         DATE NOT NULL REFERENCES tiempo(fecha),
+    id_victima          INTEGER NOT NULL
+                        REFERENCES victima(id_victima) ON DELETE RESTRICT,
+    id_agresor          INTEGER NOT NULL
+                        REFERENCES agresor(id_agresor) ON DELETE RESTRICT,
+    id_lugar            INTEGER NOT NULL
+                        REFERENCES lugar_hecho(id_lugar) ON DELETE RESTRICT,
+    fecha_hecho         DATE NOT NULL
+                        REFERENCES tiempo(fecha) ON DELETE RESTRICT,
     hora_hecho          TIME,
     tipo                VARCHAR(80),
     modalidad           VARCHAR(80),
     tipificado_fiscalia BOOLEAN DEFAULT FALSE
 );
 
--- 18. VICTIMA_INDIRECTA
-CREATE TABLE IF NOT EXISTS victima_indirecta (
-    id_vi            SERIAL PRIMARY KEY,
-    id_feminicidio   INTEGER NOT NULL REFERENCES feminicidio(id_feminicidio),
-    edad_al_hecho    INTEGER,
-    parentesco       VARCHAR(80),
-    era_menor        BOOLEAN DEFAULT FALSE,
-    presencio_hecho  BOOLEAN DEFAULT FALSE
+-- 15. FEMINICIDIO_AGREGADO (tabla auxiliar: conteos públicos por localidad/año/fuente)
+CREATE TABLE feminicidio_agregado (
+    id_agregado   SERIAL PRIMARY KEY,
+    id_localidad  INTEGER NOT NULL
+                  REFERENCES localidad(id_localidad) ON DELETE RESTRICT,
+    anio          INTEGER NOT NULL CHECK (anio BETWEEN 2010 AND 2030),
+    conteo_casos  INTEGER NOT NULL DEFAULT 0 CHECK (conteo_casos >= 0),
+    fuente        VARCHAR(50) NOT NULL,
+    tasa_por_100k NUMERIC(8, 4),
+    fecha_corte   DATE,
+    observaciones TEXT,
+    CONSTRAINT feminicidio_agregado_id_localidad_anio_fuente_key
+        UNIQUE (id_localidad, anio, fuente)
 );
 
--- 19. RED_APOYO
-CREATE TABLE IF NOT EXISTS red_apoyo (
-    id_red                  SERIAL PRIMARY KEY,
-    id_victima              INTEGER NOT NULL REFERENCES victima(id_victima),
-    tipo_red                VARCHAR(80),
-    conocimiento_violencia  BOOLEAN DEFAULT FALSE,
-    intento_proteccion      BOOLEAN DEFAULT FALSE
+-- 16. VICTIMA_INDIRECTA
+CREATE TABLE victima_indirecta (
+    id_vi           SERIAL PRIMARY KEY,
+    id_feminicidio  INTEGER NOT NULL
+                    REFERENCES feminicidio(id_feminicidio) ON DELETE CASCADE,
+    edad_al_hecho   INTEGER,
+    parentesco      VARCHAR(80),
+    era_menor       BOOLEAN DEFAULT FALSE,
+    presencio_hecho BOOLEAN DEFAULT FALSE
 );
 
--- 20. VIOLENCIA_PREVIA
-CREATE TABLE IF NOT EXISTS violencia_previa (
-    id_violencia        SERIAL PRIMARY KEY,
-    id_victima          INTEGER NOT NULL REFERENCES victima(id_victima),
-    id_agresor          INTEGER NOT NULL REFERENCES agresor(id_agresor),
-    tipo                VARCHAR(80),
-    frecuencia          VARCHAR(50),
+-- 17. VIOLENCIA_PREVIA
+CREATE TABLE violencia_previa (
+    id_violencia         SERIAL PRIMARY KEY,
+    id_victima           INTEGER NOT NULL
+                         REFERENCES victima(id_victima) ON DELETE CASCADE,
+    id_agresor           INTEGER NOT NULL
+                         REFERENCES agresor(id_agresor) ON DELETE CASCADE,
+    tipo                 VARCHAR(80),
+    frecuencia           VARCHAR(50),
     duracion_aprox_meses INTEGER
 );
 
--- 21. REINCIDENCIA
-CREATE TABLE IF NOT EXISTS reincidencia (
+-- 18. REINCIDENCIA
+CREATE TABLE reincidencia (
     id_reincidencia        SERIAL PRIMARY KEY,
-    id_agresor             INTEGER NOT NULL REFERENCES agresor(id_agresor),
+    id_agresor             INTEGER NOT NULL
+                           REFERENCES agresor(id_agresor) ON DELETE CASCADE,
     conteo_denuncias       INTEGER DEFAULT 0,
     ventana_temporal_meses INTEGER,
     fecha_ultima_agresion  DATE
 );
 
 -- =============================================================================
--- GRUPO 8: Proceso (ruta judicial)
+-- MÓDULO INSTITUCIONAL
 -- =============================================================================
 
--- 22. REPORTE_INICIAL
-CREATE TABLE IF NOT EXISTS reporte_inicial (
-    id_reporte          SERIAL PRIMARY KEY,
-    id_victima          INTEGER NOT NULL REFERENCES victima(id_victima),
-    fecha_reporte       DATE REFERENCES tiempo(fecha),
-    canal               VARCHAR(80),
-    tipo_hecho_reportado VARCHAR(100),
-    resultado           VARCHAR(100)
+-- 19. INSTITUCION
+CREATE TABLE institucion (
+    id_institucion   SERIAL PRIMARY KEY,
+    id_localidad     INTEGER NOT NULL
+                     REFERENCES localidad(id_localidad) ON DELETE RESTRICT,
+    tipo             VARCHAR(80) NOT NULL
+                     CHECK (tipo IN ('COMISARIA_FAMILIA', 'CAI',
+                                     'CASA_IGUALDAD', 'CASA_JUSTICIA')),
+    nombre           VARCHAR(200) NOT NULL,
+    direccion        VARCHAR(200),
+    telefono         VARCHAR(30),
+    horario_atencion VARCHAR(100),
+    geom             GEOMETRY(POINT, 4326)
 );
 
--- 23. DENUNCIA
-CREATE TABLE IF NOT EXISTS denuncia (
+-- 20. SERVICIO_PSICOLOGICO
+CREATE TABLE servicio_psicologico (
+    id_servicio    SERIAL PRIMARY KEY,
+    id_institucion INTEGER NOT NULL
+                   REFERENCES institucion(id_institucion) ON DELETE CASCADE,
+    tipo_atencion  VARCHAR(100),
+    modalidad      VARCHAR(80)
+);
+
+-- 21. RUTA_ATENCION
+CREATE TABLE ruta_atencion (
+    id_ruta                  SERIAL PRIMARY KEY,
+    nombre_ruta              VARCHAR(150) NOT NULL,
+    tipo_violencia_aplicable VARCHAR(100),
+    entidad_coordinadora     VARCHAR(150)
+);
+
+-- 22. INSTITUCION_RUTA (puente N:M)
+CREATE TABLE institucion_ruta (
+    id_institucion INTEGER NOT NULL
+                   REFERENCES institucion(id_institucion) ON DELETE CASCADE,
+    id_ruta        INTEGER NOT NULL
+                   REFERENCES ruta_atencion(id_ruta) ON DELETE CASCADE,
+    PRIMARY KEY (id_institucion, id_ruta)
+);
+
+-- 23. REPORTE_INICIAL
+CREATE TABLE reporte_inicial (
+    id_reporte           SERIAL PRIMARY KEY,
+    id_victima           INTEGER NOT NULL
+                         REFERENCES victima(id_victima) ON DELETE CASCADE,
+    fecha_reporte        DATE
+                         REFERENCES tiempo(fecha) ON DELETE RESTRICT,
+    canal                VARCHAR(80),
+    tipo_hecho_reportado VARCHAR(100),
+    resultado            VARCHAR(100)
+);
+
+-- 24. DENUNCIA
+CREATE TABLE denuncia (
     id_denuncia       SERIAL PRIMARY KEY,
-    id_victima        INTEGER NOT NULL REFERENCES victima(id_victima),
-    id_institucion    INTEGER NOT NULL REFERENCES institucion(id_institucion),
-    fecha_denuncia    DATE REFERENCES tiempo(fecha),
+    id_victima        INTEGER NOT NULL
+                      REFERENCES victima(id_victima) ON DELETE RESTRICT,
+    id_institucion    INTEGER NOT NULL
+                      REFERENCES institucion(id_institucion) ON DELETE RESTRICT,
+    fecha_denuncia    DATE
+                      REFERENCES tiempo(fecha) ON DELETE RESTRICT,
     entidad_receptora VARCHAR(150),
     tipo_delito       VARCHAR(100),
     estado            VARCHAR(80)
 );
 
--- 24. VALORACION_RIESGO
-CREATE TABLE IF NOT EXISTS valoracion_riesgo (
+-- 25. VALORACION_RIESGO
+CREATE TABLE valoracion_riesgo (
     id_valoracion      SERIAL PRIMARY KEY,
-    id_denuncia        INTEGER NOT NULL REFERENCES denuncia(id_denuncia),
-    id_institucion     INTEGER NOT NULL REFERENCES institucion(id_institucion),
+    id_denuncia        INTEGER NOT NULL
+                       REFERENCES denuncia(id_denuncia) ON DELETE CASCADE,
+    id_institucion     INTEGER NOT NULL
+                       REFERENCES institucion(id_institucion) ON DELETE RESTRICT,
     fecha_valoracion   DATE,
-    nivel_riesgo       VARCHAR(50),
+    nivel_riesgo       VARCHAR(50)
+                       CHECK (nivel_riesgo IN ('Bajo', 'Medio', 'Alto', 'Extremo')),
     entidad_valoradora VARCHAR(150)
 );
 
--- 25. MEDIDA_PROTECCION
-CREATE TABLE IF NOT EXISTS medida_proteccion (
+-- 26. MEDIDA_PROTECCION
+CREATE TABLE medida_proteccion (
     id_medida          SERIAL PRIMARY KEY,
-    id_denuncia        INTEGER NOT NULL REFERENCES denuncia(id_denuncia),
-    id_institucion     INTEGER NOT NULL REFERENCES institucion(id_institucion),
-    fecha_solicitud    DATE REFERENCES tiempo(fecha),
+    id_denuncia        INTEGER NOT NULL
+                       REFERENCES denuncia(id_denuncia) ON DELETE CASCADE,
+    id_institucion     INTEGER NOT NULL
+                       REFERENCES institucion(id_institucion) ON DELETE RESTRICT,
+    fecha_solicitud    DATE
+                       REFERENCES tiempo(fecha) ON DELETE RESTRICT,
     fecha_otorgamiento DATE,
     tipo_medida        VARCHAR(100),
     estado             VARCHAR(80)
 );
 
--- 26. SEGUIMIENTO
-CREATE TABLE IF NOT EXISTS seguimiento (
+-- 27. SEGUIMIENTO
+CREATE TABLE seguimiento (
     id_seguimiento      SERIAL PRIMARY KEY,
-    id_medida           INTEGER NOT NULL REFERENCES medida_proteccion(id_medida),
+    id_medida           INTEGER NOT NULL
+                        REFERENCES medida_proteccion(id_medida) ON DELETE CASCADE,
     fecha_seguimiento   DATE,
     resultado           VARCHAR(150),
     entidad_responsable VARCHAR(150)
 );
 
--- 27. CONTRAORDEN
-CREATE TABLE IF NOT EXISTS contraorden (
-    id_contraorden   SERIAL PRIMARY KEY,
-    id_medida        INTEGER NOT NULL REFERENCES medida_proteccion(id_medida),
+-- 28. CONTRAORDEN
+CREATE TABLE contraorden (
+    id_contraorden    SERIAL PRIMARY KEY,
+    id_medida         INTEGER NOT NULL
+                      REFERENCES medida_proteccion(id_medida) ON DELETE CASCADE,
     fecha_contraorden DATE,
-    tipo             VARCHAR(80),
-    motivo           TEXT,
-    entidad_emisora  VARCHAR(150)
+    tipo              VARCHAR(80),
+    motivo            TEXT,
+    entidad_emisora   VARCHAR(150)
 );
 
--- 28. PROCESO_PENAL
-CREATE TABLE IF NOT EXISTS proceso_penal (
-    id_proceso     SERIAL PRIMARY KEY,
-    id_denuncia    INTEGER NOT NULL REFERENCES denuncia(id_denuncia),
-    id_institucion INTEGER NOT NULL REFERENCES institucion(id_institucion),
-    estado_actual  VARCHAR(80),
-    fecha_apertura DATE,
+-- 29. PROCESO_PENAL
+CREATE TABLE proceso_penal (
+    id_proceso      SERIAL PRIMARY KEY,
+    id_denuncia     INTEGER NOT NULL
+                    REFERENCES denuncia(id_denuncia) ON DELETE RESTRICT,
+    id_institucion  INTEGER NOT NULL
+                    REFERENCES institucion(id_institucion) ON DELETE RESTRICT,
+    estado_actual   VARCHAR(80)
+                    CHECK (estado_actual IN ('Indagación', 'Investigación', 'Juicio',
+                                             'Ejecución de penas',
+                                             'Terminación anticipada', 'Precluido')),
+    fecha_apertura  DATE,
     fecha_sentencia DATE
 );
 
--- 29. ACTUACION_JUDICIAL
-CREATE TABLE IF NOT EXISTS actuacion_judicial (
+-- 30. ACTUACION_JUDICIAL
+CREATE TABLE actuacion_judicial (
     id_actuacion SERIAL PRIMARY KEY,
-    id_proceso   INTEGER NOT NULL REFERENCES proceso_penal(id_proceso),
+    id_proceso   INTEGER NOT NULL
+                 REFERENCES proceso_penal(id_proceso) ON DELETE CASCADE,
     fecha        DATE,
     tipo_acto    VARCHAR(100),
     resultado    VARCHAR(150)
 );
 
+COMMIT;
+
 -- =============================================================================
--- Fin del DDL — 29 tablas creadas
+-- Fin del DDL — 30 tablas. Siguiente paso: 02_crear_indices.sql
 -- =============================================================================

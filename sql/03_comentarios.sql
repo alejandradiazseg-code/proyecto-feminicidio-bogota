@@ -21,7 +21,7 @@ COMMENT ON TABLE localidad IS
   'Localidades administrativas de Bogotá (20 localidades). Contiene geometría y datos demográficos.';
 
 COMMENT ON TABLE upl IS
-  'Unidades de Planeamiento Local (antes UPZ). Subdivisión de localidades vigente desde 2022.';
+  'Unidades de Planeamiento Local (POT, Decreto 555 de 2021). Relación N:M con localidad resuelta con ST_Intersects (sin FK física).';
 
 COMMENT ON TABLE barrio IS
   'Barrios dentro de cada UPL. Nivel territorial más granular con geometría poligonal.';
@@ -39,13 +39,13 @@ COMMENT ON TABLE lugar_hecho IS
   'Ubicación geográfica puntual donde ocurrió el feminicidio. Geometría POINT.';
 
 COMMENT ON TABLE institucion IS
-  'Instituciones del Estado que participan en la ruta de atención: Fiscalía, Comisarías, ICBF, etc. Geometría POINT.';
+  'Instituciones de atención a mujeres: COMISARIA_FAMILIA, CASA_JUSTICIA, CASA_IGUALDAD, CAI. Casa de Todas excluida por decisión metodológica. Geometría POINT.';
 
 COMMENT ON TABLE ruta_atencion IS
   'Rutas de atención institucional definidas para víctimas de violencia de género.';
 
 COMMENT ON TABLE institucion_ruta IS
-  'Tabla puente M:N entre institucion y ruta_atencion. Tabla de implementación física, no parte del MER conceptual original de 28 entidades.';
+  'Tabla puente N:M entre institucion y ruta_atencion. PK compuesta (id_institucion, id_ruta).';
 
 COMMENT ON TABLE servicio_psicologico IS
   'Servicios de atención psicológica ofrecidos por instituciones.';
@@ -57,7 +57,10 @@ COMMENT ON TABLE agresor IS
   'Información del agresor: edad, ocupación, antecedentes, estado procesal actual.';
 
 COMMENT ON TABLE feminicidio IS
-  'Hecho central del modelo: un caso de feminicidio vinculado a víctima, agresor, lugar y fecha.';
+  'Hecho central del modelo: un caso de feminicidio vinculado a víctima, agresor, lugar y fecha. Vacía: las fuentes públicas solo publican datos agregados.';
+
+COMMENT ON TABLE feminicidio_agregado IS
+  'Tabla auxiliar (no en el MER original): conteos públicos de violencia letal y riesgo contra mujeres por localidad, año y fuente (INMLCF vtub-3de2, OMEG/SDMujer). UNIQUE (id_localidad, anio, fuente).';
 
 COMMENT ON TABLE victima_indirecta IS
   'Personas afectadas indirectamente por el feminicidio (hijos, familiares).';
@@ -106,7 +109,7 @@ COMMENT ON COLUMN localidad.geom IS
   'Geometría MULTIPOLYGON en SRID 4326. Límite administrativo de la localidad.';
 
 COMMENT ON COLUMN upl.geom IS
-  'Geometría POLYGON en SRID 4326. Límite de la Unidad de Planeamiento Local.';
+  'Geometría MULTIPOLYGON en SRID 4326. Límite de la Unidad de Planeamiento Local.';
 
 COMMENT ON COLUMN barrio.geom IS
   'Geometría POLYGON en SRID 4326. Límite del barrio.';
@@ -127,8 +130,14 @@ COMMENT ON COLUMN institucion.geom IS
 COMMENT ON COLUMN localidad.id_zona IS
   'FK → zona. Zona macro a la que pertenece la localidad.';
 
-COMMENT ON COLUMN upl.id_localidad IS
-  'FK → localidad. Localidad que contiene esta UPL.';
+COMMENT ON COLUMN feminicidio_agregado.id_localidad IS
+  'FK → localidad. Localidad a la que corresponde el conteo.';
+
+COMMENT ON COLUMN feminicidio_agregado.tasa_por_100k IS
+  'Tasa de feminicidios por cada 100.000 mujeres en la localidad';
+
+COMMENT ON COLUMN feminicidio_agregado.fuente IS
+  'Origen del dato: INMLCF_HOMICIDIOS | INMLCF_FEMINICIDIO | INMLCF_VIOLENCIA_GENERO | INMLCF_SIN_INFO | OMEG_RIESGO_Tn | OMEG_ASESINATOS_Tn.';
 
 COMMENT ON COLUMN barrio.id_upl IS
   'FK → upl. UPL que contiene este barrio.';
