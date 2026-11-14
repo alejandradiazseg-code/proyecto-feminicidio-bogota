@@ -85,7 +85,7 @@ function actualizarHeroYKPIs() {
     if (conInd.length > 0) {
         const peor = conInd.reduce((m, d) => d.casos_por_via_formal > m.casos_por_via_formal ? d : m);
         document.getElementById("kpi-peor").textContent = peor.localidad;
-        document.getElementById("kpi-peor-valor").textContent = `${peor.casos_por_via_formal} casos por institución formal`;
+        document.getElementById("kpi-peor-valor").textContent = `${fmtNum(peor.casos_por_via_formal, 1)} casos por institución formal`;
     }
 }
 
@@ -98,7 +98,7 @@ function animarNumero(id, fin) {
     const timer = setInterval(() => {
         inicio += incremento;
         if (inicio >= fin) { inicio = fin; clearInterval(timer); }
-        el.textContent = Math.floor(inicio).toLocaleString();
+        el.textContent = fmtNum(Math.floor(inicio));
     }, paso);
 }
 
@@ -173,7 +173,11 @@ function pintarLocalidades(geojson) {
             layer.on("mouseout",  () => capaLocalidades.resetStyle(layer));
         }
     }).addTo(mapa);
-    mapa.fitBounds(capaLocalidades.getBounds()); setTimeout(() => mapa.invalidateSize(), 300); setTimeout(() => mapa.invalidateSize(), 800); setTimeout(() => mapa.invalidateSize(), 1500);
+    // Encuadre en el área urbana: Sumapaz (rural) ocupa casi la mitad del Distrito
+    // y deja las localidades urbanas diminutas; sigue visible al alejar el mapa.
+    const urbanas = capaLocalidades.getLayers().filter(l => l.feature.properties.zona !== "Rural");
+    mapa.fitBounds(L.featureGroup(urbanas.length ? urbanas : capaLocalidades.getLayers()).getBounds(), { padding: [10, 10] });
+    setTimeout(() => mapa.invalidateSize(), 300); setTimeout(() => mapa.invalidateSize(), 800); setTimeout(() => mapa.invalidateSize(), 1500);
     agregarLeyenda();
 }
 
@@ -257,46 +261,82 @@ async function cargarInstituciones() {
 
 // ── GRÁFICAS ──────────────────────────────────────────────
 
-function dibujarChartZonas(datos) {
+function dibujarChartZonas(datosApi) {
+    const datos = datosApi
+        .map(d => ({ ...d, total_casos: Number(d.total_casos) || 0, num_localidades: Number(d.num_localidades) || 0 }))
+        .sort((a, b) => b.total_casos - a.total_casos);
     const total = datos.reduce((s, d) => s + d.total_casos, 0);
+    if (total === 0) return;
+    const pct = n => fmtPct(n / total * 100);
+
     new Chart(document.getElementById("chart-zonas").getContext("2d"), {
         type: "doughnut",
         data: {
             labels: datos.map(d => d.zona),
             datasets: [{
                 data: datos.map(d => d.total_casos),
-                backgroundColor: datos.map(d => COLORES_ZONA[d.zona]),
-                borderWidth: 2,
-                borderColor: "#fff"
+                backgroundColor: datos.map(d => COLORES_ZONA[d.zona] || "#9e9e9e"),
+                borderWidth: 3,
+                borderColor: "#fff",
+                hoverOffset: 8
             }]
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
+            cutout: "64%",
+            layout: { padding: 8 },
             plugins: {
-                legend: { position: "bottom" },
+                legend: { display: false },   // la leyenda va en la tabla de la derecha
                 tooltip: {
                     callbacks: {
-                        label: ctx => {
-                            const pct = ((ctx.parsed / total) * 100).toFixed(1);
-                            return ` ${ctx.label}: ${ctx.parsed.toLocaleString()} casos (${pct}%)`;
-                        }
+                        label: ctx => ` Zona ${ctx.label}: ${fmtNum(ctx.parsed)} ${plural(ctx.parsed)} (${pct(ctx.parsed)})`
                     }
                 }
             }
         }
     });
 
-    // Detalle textual debajo de la dona
+    document.getElementById("dona-total").textContent = fmtNum(total);
+
+    // Tabla por zona: barra proporcional + casos, % y promedio por localidad
     const detalle = document.getElementById("dona-detalle");
-    if (detalle) {
-        const sorted = [...datos].sort((a, b) => b.total_casos - a.total_casos);
-        detalle.innerHTML = sorted.map(d => {
-            const pct = ((d.total_casos / total) * 100).toFixed(1);
-            return `<span class="zona-badge" style="background:${COLORES_ZONA[d.zona]};"></span>
-                    <strong>${d.zona}:</strong> ${d.total_casos.toLocaleString()} casos (${pct}%)`;
-        }).join("<br>");
-    }
+    const max = datos[0].total_casos;
+    detalle.innerHTML = `
+        <div class="zona-fila encabezado"><span>Zona</span><span>Participación</span><span class="zona-cifras">Casos · prom./localidad</span></div>` +
+        datos.map(d => {
+            const prom = d.num_localidades ? d.total_casos / d.num_localidades : 0;
+            return `
+            <div class="zona-fila">
+                <span class="zona-nombre"><span class="zona-badge" style="background:${COLORES_ZONA[d.zona]};"></span>${d.zona}</span>
+                <span class="zona-barra" title="${pct(d.total_casos)}"><span style="width:${d.total_casos / max * 100}%;background:${COLORES_ZONA[d.zona]};"></span></span>
+                <span class="zona-cifras"><strong>${fmtNum(d.total_casos)}</strong> · ${pct(d.total_casos)}
+                    <small>${fmtNum(prom, 1)} por localidad (${d.num_localidades} ${d.num_localidades === 1 ? "localidad" : "localidades"})</small></span>
+            </div>`;
+        }).join("");
+
+    // Lectura automática a partir de los datos
+    const [mayor] = datos;
+    const promedios = datos.filter(d => d.num_localidades).map(d => ({ ...d, prom: d.total_casos / d.num_localidades }));
+    const otrasUrbanas = promedios.filter(d => d.zona !== mayor.zona && d.zona !== "Rural");
+    const promOtras = otrasUrbanas.reduce((s, d) => s + d.total_casos, 0) /
+                      Math.max(1, otrasUrbanas.reduce((s, d) => s + d.num_localidades, 0));
+    const promMayor = mayor.total_casos / mayor.num_localidades;
+    document.getElementById("dona-lectura").innerHTML =
+        `<strong style="color:${COLORES_ZONA[mayor.zona]};">Zona ${mayor.zona}</strong> concentra el ${pct(mayor.total_casos)} de los casos. ` +
+        `Cada una de sus localidades registra en promedio ${fmtNum(promMayor, 1)} homicidios de mujeres, ` +
+        `${fmtNum(promMayor / promOtras, 1)} veces más que una localidad de las demás zonas urbanas (${fmtNum(promOtras, 1)}). ` +
+        `La <strong style="color:${COLORES_ZONA.Rural};">Zona Rural</strong> (Sumapaz) tiene muy pocos casos por su baja densidad poblacional.`;
 }
+
+// ── FORMATO (es-CO) ───────────────────────────────────────
+function fmtNum(n, dec = 0) {
+    return Number(n).toLocaleString("es-CO", { minimumFractionDigits: dec, maximumFractionDigits: dec });
+}
+function fmtPct(p) {
+    return (p > 0 && p < 0.1 ? "<0,1" : fmtNum(p, 1)) + " %";
+}
+function plural(n) { return n === 1 ? "caso" : "casos"; }
 
 function dibujarChartSerie(datos) {
     const anos  = [...new Set(datos.map(d => d.anio))].sort();
