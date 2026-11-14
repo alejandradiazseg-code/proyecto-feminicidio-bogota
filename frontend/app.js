@@ -13,6 +13,13 @@ let mapa, capaLocalidades, capasInst = {}, capaActiva = "homicidios";
 let datosIndicadores = [], datosNegligencia = [], datosBrecha = [], datosLocalidades = {};
 let todosInstsData = {};
 
+// Tipografía de las gráficas acorde al tamaño base de la página (crece en pantallas grandes)
+if (window.Chart) {
+    const base = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    Chart.defaults.font.size = Math.round(base * 0.8);
+    Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
     inicializarMapa();
     await cargarTodo();

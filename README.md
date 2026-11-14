@@ -25,6 +25,25 @@ pip install -r requirements.txt
 
 Copia el archivo `.env.example` y renómbralo a `.env`. Llena los valores reales de conexión a tu base de datos PostGIS.
 
+## Ejecutar el observatorio en local
+
+Requiere PostgreSQL/PostGIS en marcha con la base cargada. Desde la raíz del proyecto:
+
+```bash
+./iniciar_observatorio.sh
+```
+
+El script levanta el backend en http://localhost:8000 y la página en http://localhost:5500, y abre el navegador. Para detener ambos, usa Ctrl+C.
+
+Para hacerlo a mano, en dos terminales y siempre desde la raíz del proyecto:
+
+```bash
+python3 -m uvicorn backend.main:app --port 8000 --reload
+python3 -m http.server 5500 --directory frontend
+```
+
+No abras `index.html` con doble clic. Ábrelo por http://localhost:5500.
+
 ## Prueba de conexión
 Para probar que las librerías y la conexión a la base de datos funcionan, puedes usar el script de testeo:
 

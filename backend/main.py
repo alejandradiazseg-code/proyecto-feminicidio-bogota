@@ -268,8 +268,11 @@ def indicador_desierto():
            COALESCE(ci.casas_igualdad, 0) AS casas_igualdad,
            COALESCE(ca.cais, 0) AS cais,
            COALESCE(f.homicidios, 0) AS homicidios,
-           CASE WHEN (c.comisarias + cj.casas_justicia) > 0 
-                THEN ROUND(f.homicidios::numeric / (c.comisarias + cj.casas_justicia), 2) 
+           -- COALESCE en cada término: si una localidad no tiene Casas de Justicia
+           -- (o Comisarías), el LEFT JOIN deja NULL y la suma completa sería NULL.
+           CASE WHEN (COALESCE(c.comisarias, 0) + COALESCE(cj.casas_justicia, 0)) > 0
+                THEN ROUND(COALESCE(f.homicidios, 0)::numeric
+                           / (COALESCE(c.comisarias, 0) + COALESCE(cj.casas_justicia, 0)), 2)
                 ELSE NULL END AS casos_por_via_formal,
            CASE WHEN ca.cais > 0 
                 THEN ROUND(f.homicidios::numeric / ca.cais, 2) 
