@@ -96,9 +96,22 @@
             display: inline-block;
             width: 12px; height: 12px;
             border-radius: 2px;
-            margin-right: 4px;
+            margin-right: 6px;
             vertical-align: middle;
         }
+        .dona-wrap { position: relative; height: 260px; max-width: 300px; margin: 0 auto; }
+        .dona-centro { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+        .dona-total { font-size: 2rem; font-weight: 700; color: var(--morado-oscuro); line-height: 1; }
+        .dona-total-lbl { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--gris-medio); margin-top: 0.3rem; }
+        .zona-fila { display: grid; grid-template-columns: 110px 1fr 200px; gap: 0.8rem; align-items: center; padding: 0.55rem 0; border-bottom: 1px solid #f1e6f6; font-size: 0.85rem; }
+        .zona-fila:last-child { border-bottom: none; }
+        .zona-fila.encabezado { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; color: var(--gris-medio); padding-top: 0; }
+        .zona-nombre { font-weight: 600; color: var(--gris-oscuro); white-space: nowrap; }
+        .zona-barra { background: #f3e5f5; border-radius: 6px; height: 14px; overflow: hidden; }
+        .zona-barra > span { display: block; height: 100%; border-radius: 6px; min-width: 3px; }
+        .zona-cifras { text-align: right; color: var(--gris-oscuro); white-space: nowrap; }
+        .zona-cifras small { color: var(--gris-medio); display: block; font-size: 0.72rem; }
+        @media (max-width: 576px) { .zona-fila { grid-template-columns: 80px 1fr 110px; gap: 0.5rem; } }
 
         /* INDICADORES NEGLIGENCIA */
         .bg-negligencia { background: linear-gradient(135deg, #f3e5f5 0%, #fce4ec 100%); }
@@ -201,7 +214,7 @@
                 <div class="kpi-card">
                     <div class="kpi-label">Homicidios de mujeres</div>
                     <div class="kpi-numero" id="kpi-homicidios">—</div>
-                    <div class="kpi-detalle">Serie 2015–2024 · Medicina Legal</div>
+                    <div class="kpi-detalle">2015–2024 · con localidad identificada (de 1.053 en Bogotá) · Medicina Legal</div>
                 </div>
             </div>
             <div class="col-md-3">
@@ -306,20 +319,30 @@
                     <div class="form-check"><input class="form-check-input" type="checkbox" id="show-casas-igualdad" checked><label class="form-check-label" for="show-casas-igualdad"><span style="color:#0288d1;">●</span> Casas de Igualdad (21)</label></div>
                     <div class="form-check"><input class="form-check-input" type="checkbox" id="show-cai"><label class="form-check-label" for="show-cai"><span style="color:#546e7a;">●</span> CAI Policía (153)</label></div>
                 </div>
-                <!-- DONA CON CONTEXTO -->
-                <div class="chart-card">
-                    <div class="chart-titulo"><i class="bi bi-pie-chart me-2"></i>Distribución de casos por zona</div>
-                    <p class="chart-contexto">
-                        El siguiente gráfico muestra la distribución porcentual de los homicidios de mujeres registrados
-                        entre 2015 y 2024 según la zona geográfica de Bogotá. La <strong style="color:#ef5350;">Zona Sur</strong>
-                        concentra consistentemente la mayor proporción de casos, mientras que la
-                        <strong style="color:#66bb6a;">Zona Rural</strong> (Sumapaz) registra los valores más bajos
-                        dada su baja densidad poblacional.
-                    </p>
-                    <canvas id="chart-zonas"></canvas>
-                    <div class="dona-contexto" id="dona-detalle">
-                        <!-- Se llena dinámicamente -->
+            </div>
+        </div>
+
+        <!-- DONA CON CONTEXTO (debajo del mapa, a todo el ancho) -->
+        <div class="chart-card mt-4">
+            <div class="chart-titulo"><i class="bi bi-pie-chart me-2"></i>Distribución de casos por zona · Homicidios de mujeres 2015–2024</div>
+            <p class="chart-contexto">
+                Distribución de los homicidios de mujeres con localidad identificada (INMLCF) según la zona geográfica de Bogotá.
+                Como las zonas agrupan distinto número de localidades, a la derecha se muestra también el
+                <strong>promedio de casos por localidad</strong>, que permite comparar zonas de tamaño diferente.
+            </p>
+            <div class="row g-4 align-items-center">
+                <div class="col-md-5 col-lg-4">
+                    <div class="dona-wrap">
+                        <canvas id="chart-zonas" aria-label="Gráfico de dona: homicidios de mujeres por zona" role="img"></canvas>
+                        <div class="dona-centro">
+                            <span class="dona-total" id="dona-total">—</span>
+                            <span class="dona-total-lbl">casos</span>
+                        </div>
                     </div>
+                </div>
+                <div class="col-md-7 col-lg-8">
+                    <div id="dona-detalle"><!-- Se llena dinámicamente --></div>
+                    <p class="dona-contexto mb-0" id="dona-lectura"></p>
                 </div>
             </div>
         </div>
