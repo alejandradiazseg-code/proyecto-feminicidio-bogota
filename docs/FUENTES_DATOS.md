@@ -40,3 +40,36 @@ Indicadores derivados: tasa de tipificación 253 / 1.053 = **24 %**; 1.053 − 2
 | OMEG — Asesinatos de mujeres (jun, sep, dic 2025) | 06, 06b, 06c | `dataset/da552105…/asesinatos*_{06,09,12}2025.geojson` |
 
 Las URL completas están en cada script de `etl/`. Las 13 respondieron HTTP 200 el 2026-11-13.
+
+## 3. OMEG (Secretaría Distrital de la Mujer) — datos 2025
+
+Copias locales descargadas el **13 de noviembre de 2026** en `data/raw/omeg/*_descarga20261113.geojson`. `etl/06c_recargar_omeg.py` lee esas copias y solo descarga si faltan.
+
+Los cortes del OMEG son **acumulados en el año**: riesgo 1.161 en junio, 1.997 en septiembre y 2.766 en diciembre. Por eso se carga únicamente el corte del **31-dic-2025** como cifra anual 2025.
+
+| Fuente en BD | Archivo | Corte | Total Bogotá |
+|---|---|---|---|
+| `OMEG_RIESGO_T3` | `riesgofeminicidio_122025` | 2025-12-31 | **2.766** mujeres valoradas en riesgo de feminicidio |
+| `OMEG_ASESINATOS_T3` | `asesinatos_122025` | 2025-12-31 | **109** asesinatos de mujeres |
+
+| Archivo | SHA-256 |
+|---|---|
+| riesgofeminicidio_122025 | `8b52123c7899a9f4074ded68f3d2707058c275a5a55b464d501e9961d8c6f1bc` |
+| asesinatos_122025 | `4e7017f4ade56d51f849c99a3104115d6d34d074a80c33c6998acd182d30c784` |
+
+Inconsistencias del portal:
+- `asesinatosmujeres_092025.geojson` trae `Fecha = 2024-12-31` y un total de 116; no es el corte de septiembre de 2025.
+- Los archivos de diciembre usan otros nombres de columna (`TAsesinatos`, `TRiesgoFeminicidio`) que los de junio y septiembre (`TAsesinato`, `TRiesgoFem`).
+
+## 4. Cifras en la BD (`feminicidio_agregado`, verificado 2026-11-13)
+
+| Fuente | Casos | Relación |
+|---|---|---|
+| `INMLCF_HOMICIDIOS` | 1.037 | Total de homicidios de mujeres con localidad, 2015–2024 |
+| `INMLCF_SIN_INFO` | 646 | Subconjunto del anterior (circunstancia sin información) |
+| `INMLCF_VIOLENCIA_GENERO` | 168 | Subconjunto (feminicidio + violencia o conflicto de pareja) |
+| `INMLCF_FEMINICIDIO` | 77 | Subconjunto (circunstancia = Feminicidio, 2018–2024) |
+| `OMEG_RIESGO_T3` | 2.766 | 2025, corte anual |
+| `OMEG_ASESINATOS_T3` | 109 | 2025, corte anual |
+
+Las fuentes INMLCF no se suman entre sí: las tres últimas son desgloses de `INMLCF_HOMICIDIOS`.
