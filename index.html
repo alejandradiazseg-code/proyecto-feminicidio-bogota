@@ -184,6 +184,7 @@
         <a href="#panorama">Panorama</a>
         <a href="#mapa-seccion">Mapa</a>
         <a href="#indicadores">Indicadores</a>
+        <a href="#propuesta">Propuesta</a>
         <a href="#prevencion">Prevención</a>
     </div>
 </nav>
@@ -193,7 +194,7 @@
     <img src="images/hero-justicia.jpg" alt="Mujeres exigiendo justicia" class="hero-img">
     <div class="hero-overlay"></div>
     <div class="hero-content">
-        <div class="hero-tag">Bases de Datos Espaciales · Bogotá D.C.</div>
+        <div class="hero-tag">Semillero OSGeoLAB-UD · Bogotá D.C.</div>
         <h1 class="hero-title">Violencia Feminicida<br><span>y Negligencia Institucional</span></h1>
         <p class="hero-subtitle">Análisis espacial comparativo entre zonas de Bogotá 2015–2025. Datos integrados de Medicina Legal, SDMujer, Fiscalía General y oferta institucional distrital.</p>
         <div class="hero-stats">
@@ -262,7 +263,7 @@
                 <div class="col-6 col-md-3">
                     <div class="hallazgo-stat">
                         <div class="num">1.053</div>
-                        <div class="lbl">Homicidios de mujeres<br>INMLCF 2015–2024</div>
+                        <div class="lbl">Homicidios de mujeres<br>INMLCF 2015–2024*</div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
@@ -295,7 +296,8 @@
                 la violencia feminicida en su fase previa, pero no logra prevenirla sistemáticamente.
                 La tasa de tipificación no mostró tendencia de mejora sostenida en los 10 años de vigencia de la
                 <strong>Ley 1761 de 2015</strong> (Ley Rosa Elvira Cely).
-                <em style="color:#888;">Fuentes (datos.gov.co, obtenidos el 17 de abril de 2026): Fiscalía General de la Nación ·
+                <em style="color:#888;">*Incluye 16 casos sin localidad identificada; por eso el mapa suma 1.037.
+                Fuentes (datos.gov.co, obtenidos el 17 de abril de 2026): Fiscalía General de la Nación ·
                 Conteo de Víctimas V2 (hechos 2015–2024, víctimas de sexo femenino en Bogotá D.C.);
                 INMLCF · Presuntos Homicidios. Colombia, 2015 a 2024. Cifras definitivas (vtub-3de2).
                 Nota: los datos de Fiscalía corresponden al total Bogotá D.C. sin desagregación por localidad.</em>
@@ -339,6 +341,7 @@
                 Distribución de los homicidios de mujeres con localidad identificada (INMLCF) según la zona geográfica de Bogotá.
                 Como las zonas agrupan distinto número de localidades, a la derecha se muestra también el
                 <strong>promedio de casos por localidad</strong>, que permite comparar zonas de tamaño diferente.
+                Las cifras son conteos absolutos: deben leerse junto con la población y la oferta institucional de cada territorio.
             </p>
             <div class="row g-4 align-items-center">
                 <div class="col-md-5 col-lg-4">
@@ -460,13 +463,13 @@
                     <div class="indicador-numero" style="color:#2e7d32;" id="ind-brecha">—</div>
                     <div class="indicador-nombre" style="color:#2e7d32;">Brecha alerta–muerte</div>
                     <div class="indicador-desc">
-                        De cada 100 mujeres identificadas en situación de riesgo de feminicidio
-                        por el sistema de alertas de la SDMujer (2025), cuántas fueron asesinadas.
-                        Este indicador mide la falla del sistema preventivo: si una mujer está
-                        identificada como en riesgo y aun así es asesinada, el sistema de
-                        seguimiento no funcionó efectivamente.
+                        Relación entre los asesinatos de mujeres (Policía, SIEDCO) y las mujeres valoradas
+                        en riesgo de feminicidio por Medicina Legal en cada localidad (OMEG–SDMujer, 2025).
+                        Una razón alta indica que, donde el sistema ya conoce situaciones de riesgo, la violencia
+                        letal persiste. Con datos públicos no es posible saber si cada víctima estaba previamente
+                        identificada: ese cruce es justamente uno de los vacíos que la base de datos propuesta resolvería.
                     </div>
-                    <div class="indicador-formula">Fórmula: asesinadas 2025 ÷ mujeres en riesgo 2025 × 100</div>
+                    <div class="indicador-formula">Fórmula: asesinatos 2025 ÷ mujeres valoradas en riesgo 2025 × 100</div>
                     <div class="indicador-peor" id="ind-brecha-peor">—</div>
                     <div class="indicador-mejor" id="ind-brecha-mejor">—</div>
                 </div>
@@ -488,11 +491,68 @@
                         Entre 2015 y 2019, la <strong>Zona Sur</strong> fue la que más mejoró en este indicador (+0,95 puntos),
                         superando en 2019 el índice de la Zona Norte (+0,69). <span style="color:#888;">(Promedio por zona del índice de cada localidad, escala 1–5.)</span> Sin embargo, esta mejora en infraestructura
                         no se tradujo en una reducción equivalente de homicidios de mujeres en el Sur,
-                        lo que <strong>refuerza la hipótesis de que la negligencia procesal e institucional —y no solo
-                        las condiciones del entorno físico— es un factor central</strong> en la persistencia de la violencia feminicida
-                        en esta zona. <em style="color:#888;">Fuente: Secretaría Distrital de la Mujer · Cortes 2015 y 2019.
+                        lo que sugiere que <strong>mejorar el espacio público no basta</strong>: buena parte de la violencia
+                        feminicida ocurre en el ámbito privado, donde la protección depende de que la
+                        <strong>ruta institucional</strong> (denuncia, medida de protección y seguimiento) funcione. <em style="color:#888;">Fuente: Secretaría Distrital de la Mujer · Cortes 2015 y 2019.
                         Última medición disponible: septiembre 2019.</em>
                     </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- SECCIÓN PROPUESTA -->
+<section class="seccion bg-white" id="propuesta">
+    <div class="container-fluid">
+        <div class="divisor"></div>
+        <h2 class="seccion-titulo">La propuesta: una base de datos para la ruta institucional</h2>
+        <p class="seccion-subtitulo">Lo que hoy no se puede medir es, en sí mismo, parte del problema</p>
+        <div class="row g-4">
+            <div class="col-lg-5">
+                <p style="font-size:0.92rem; line-height:1.8; color:#444;">
+                    Nuestra hipótesis es que muchos feminicidios pudieron estar precedidos por alertas a las
+                    instituciones (reportes, denuncias o medidas de protección) que no tuvieron una respuesta oportuna.
+                    Sin embargo, cada entidad registra su parte por separado y ninguna publica la información de forma
+                    que pueda cruzarse. Por eso la negligencia es evidente en los hechos, pero <strong>invisible en los datos</strong>.
+                </p>
+                <p style="font-size:0.92rem; line-height:1.8; color:#444;">
+                    Este observatorio se apoya en una <strong>base de datos espacial de 30 tablas</strong>
+                    (PostgreSQL + PostGIS). Nueve ya están pobladas con datos oficiales. Las otras
+                    <strong>21 están construidas y listas</strong> para que las entidades que intervienen
+                    (comisarías de familia, casas de justicia, Fiscalía, Medicina Legal, Policía y Secretaría de la Mujer)
+                    las alimenten, y así responder preguntas que hoy nadie puede contestar.
+                </p>
+                <p style="font-size:0.85rem; line-height:1.7; color:#666; font-style:italic;">
+                    Indicios en los datos públicos: 893 tentativas de feminicidio, 2.766 mujeres valoradas en riesgo en 2025
+                    y 62 % de homicidios sin circunstancia registrada.
+                </p>
+            </div>
+            <div class="col-lg-7">
+                <div style="background:#f8f5fb; border-radius:14px; padding:1.5rem;">
+                    <div style="font-size:0.8rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--morado-medio); font-weight:600; margin-bottom:1rem;">
+                        Ruta institucional modelada en la base de datos
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center; font-size:0.82rem;">
+                        <span class="badge rounded-pill" style="background:#6a1b9a;">Reporte inicial</span> →
+                        <span class="badge rounded-pill" style="background:#6a1b9a;">Denuncia</span> →
+                        <span class="badge rounded-pill" style="background:#6a1b9a;">Valoración de riesgo</span> →
+                        <span class="badge rounded-pill" style="background:#6a1b9a;">Medida de protección</span> →
+                        <span class="badge rounded-pill" style="background:#6a1b9a;">Seguimiento</span> →
+                        <span class="badge rounded-pill" style="background:#6a1b9a;">Revocación de la medida</span> →
+                        <span class="badge rounded-pill" style="background:#6a1b9a;">Proceso penal</span>
+                    </div>
+                    <div style="font-size:0.85rem; color:#444; margin-top:1.3rem; line-height:1.8;">
+                        <strong>Preguntas que esta estructura permitiría responder:</strong><br>
+                        • ¿Cuántas víctimas de feminicidio habían denunciado antes, y cuántas veces?<br>
+                        • ¿Cuánto tiempo pasó entre la primera denuncia y el hecho?<br>
+                        • ¿Cuántas medidas de protección se revocaron o no tuvieron seguimiento?<br>
+                        • ¿En qué localidades se concentran estas fallas y qué tan lejos está la institución más cercana?
+                    </div>
+                    <div style="font-size:0.85rem; color:#444; margin-top:1rem; line-height:1.7;">
+                        <strong>Lo urgente:</strong> actualizar y completar las bases de datos de las entidades, exigir que cada caso
+                        se registre y tipifique a tiempo, e integrar esta ruta para activar <strong>alertas tempranas</strong>.
+                    </div>
                 </div>
             </div>
         </div>
@@ -524,7 +584,7 @@
                     <div class="prevencion-titulo">Recomendaciones derivadas del análisis</div>
                     <div class="prevencion-texto">
                         <p class="mb-2">🏛️ <strong>Rafael Uribe Uribe, Ciudad Bolívar y Santa Fe</strong> presentan los mayores índices de desierto institucional, y <strong>La Candelaria</strong> no cuenta con ninguna Comisaría ni Casa de Justicia. Se recomienda aumentar la oferta de Comisarías y Casas de Justicia en estas localidades.</p>
-                        <p class="mb-2">📊 <strong>Barrios Unidos y Chapinero</strong> presentan las mayores tasas de conversión riesgo→muerte en 2025. Requieren refuerzo urgente del sistema de seguimiento a mujeres en riesgo.</p>
+                        <p class="mb-2">📊 <strong>Barrios Unidos y Chapinero</strong> presentan la mayor relación entre asesinatos y mujeres valoradas en riesgo en 2025 (sobre pocos casos, por lo que debe leerse con cautela). Se recomienda revisar el seguimiento a mujeres con alertas activas.</p>
                         <p class="mb-2">📝 <strong>El 62 % de casos sin clasificación</strong> requiere protocolos forenses estandarizados con perspectiva de género en todas las localidades.</p>
                         <p class="mb-2">⚖️ <strong>La Candelaria</strong> es la única localidad urbana sin Comisaría de Familia, lo que representa un vacío institucional crítico.</p>
                         <p>⚡ <strong>Solo el 24% de los homicidios</strong> de mujeres fue tipificado como feminicidio por la Fiscalía en 10 años de vigencia de la Ley 1761 de 2015. Se requiere fortalecimiento institucional para la aplicación efectiva del tipo penal.</p>
@@ -564,7 +624,8 @@
         <div class="row">
             <div class="col-md-4">
                 <h6>Observatorio de Violencia Feminicida · Bogotá</h6>
-                <p>Proyecto académico — Bases de Datos Espaciales<br>Análisis de negligencia procesal y administrativa</p>
+                <p>Semillero de investigación OSGeoLAB-UD<br>Universidad Distrital Francisco José de Caldas<br>Desarrollado con bases de datos espaciales</p>
+                <img src="images/logo_osgeolab.png" alt="Semillero OSGeoLAB-UD" style="height:42px; margin-top:0.3rem; background:white; border-radius:6px; padding:4px 8px;">
             </div>
             <div class="col-md-4">
                 <h6>Fuentes de datos</h6>
@@ -581,8 +642,8 @@
         </div>
         <div class="footer-autoras">
             <strong style="color:white;">Elaborado por:</strong>
-            Maria Alejandra Segura Díaz (Cód. 20212025003) &nbsp;·&nbsp;
-            Bases de Datos Espaciales · Abril 2026
+            María Alejandra Segura Díaz (Cód. 20212025003) &nbsp;·&nbsp;
+            Semillero OSGeoLAB-UD · Universidad Distrital
         </div>
     </div>
 </footer>

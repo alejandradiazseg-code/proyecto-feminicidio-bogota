@@ -151,15 +151,16 @@ function animarNumero(id, fin) {
 // ── INDICADORES DE NEGLIGENCIA ─────────────────────────────
 
 function actualizarIndicadoresNegligencia() {
-    const conInd = datosIndicadores.filter(d => d.casos_por_via_formal != null);
+    // Zona urbana: Sumapaz (rural, 1 caso en 10 años) no es comparable como "mejor" localidad
+    const conInd = datosIndicadores.filter(d => d.casos_por_via_formal != null && d.zona !== "Rural");
     if (conInd.length > 0) {
         const peor  = conInd.reduce((m, d) => d.casos_por_via_formal > m.casos_por_via_formal ? d : m);
         const mejor = conInd.reduce((m, d) => d.casos_por_via_formal < m.casos_por_via_formal ? d : m);
-        document.getElementById("ind-via-formal").textContent = peor.casos_por_via_formal;
+        document.getElementById("ind-via-formal").textContent = fmtNum(peor.casos_por_via_formal, 1);
         document.getElementById("ind-via-formal-peor").textContent =
-            `⬆ Peor: ${peor.localidad} (${peor.casos_por_via_formal} casos/institución)`;
+            `⬆ Peor: ${peor.localidad} (${fmtNum(peor.casos_por_via_formal, 1)} casos por institución)`;
         document.getElementById("ind-via-formal-mejor").textContent =
-            `⬇ Mejor: ${mejor.localidad} (${mejor.casos_por_via_formal} casos/institución)`;
+            `⬇ Mejor (zona urbana): ${mejor.localidad} (${fmtNum(mejor.casos_por_via_formal, 1)} casos por institución)`;
     }
 
     const conSI = datosNegligencia.filter(d => d.pct_sin_clasificacion != null);
@@ -171,20 +172,20 @@ function actualizarIndicadoresNegligencia() {
         const totHom = datosNegligencia.reduce((s, d) => s + (d.homicidios_total || 0), 0);
         document.getElementById("ind-sin-info").textContent = totHom ? fmtNum(totSI / totHom * 100) + " %" : "—";
         document.getElementById("ind-sin-info-peor").textContent =
-            `⬆ Peor: ${peorSI.localidad} (${peorSI.pct_sin_clasificacion}%)`;
+            `⬆ Peor: ${peorSI.localidad} (${fmtNum(peorSI.pct_sin_clasificacion)} %)`;
         document.getElementById("ind-sin-info-mejor").textContent =
-            `⬇ Mejor: ${mejorSI.localidad} (${mejorSI.pct_sin_clasificacion}%)`;
+            `⬇ Mejor: ${mejorSI.localidad} (${fmtNum(mejorSI.pct_sin_clasificacion)} %)`;
     }
 
     const conBrecha = datosBrecha.filter(d => d.tasa_conversion_pct != null && d.tasa_conversion_pct > 0);
     if (conBrecha.length > 0) {
         const peorB  = conBrecha.reduce((m, d) => d.tasa_conversion_pct > m.tasa_conversion_pct ? d : m);
         const mejorB = conBrecha.reduce((m, d) => d.tasa_conversion_pct < m.tasa_conversion_pct ? d : m);
-        document.getElementById("ind-brecha").textContent = peorB.tasa_conversion_pct + "%";
+        document.getElementById("ind-brecha").textContent = fmtNum(peorB.tasa_conversion_pct, 1) + " %";
         document.getElementById("ind-brecha-peor").textContent =
-            `⬆ Peor: ${peorB.localidad} · ${peorB.asesinadas_2025} asesinadas de ${peorB.mujeres_en_riesgo_2025} en riesgo`;
+            `⬆ Peor: ${peorB.localidad} · ${peorB.asesinadas_2025} asesinatos frente a ${peorB.mujeres_en_riesgo_2025} mujeres en riesgo`;
         document.getElementById("ind-brecha-mejor").textContent =
-            `⬇ Mejor: ${mejorB.localidad} (${mejorB.tasa_conversion_pct}%)`;
+            `⬇ Mejor: ${mejorB.localidad} (${fmtNum(mejorB.tasa_conversion_pct, 1)} %)`;
     }
 }
 
@@ -472,11 +473,11 @@ function dibujarChartIndicador(datos) {
     // Texto destacado debajo del Top 10
     const highlight = document.getElementById("top10-highlight");
     if (highlight && top10.length > 0) {
-        const mejor = [...datos.filter(d => d.casos_por_via_formal != null)]
+        const mejor = [...datos.filter(d => d.casos_por_via_formal != null && d.zona !== "Rural")]
             .sort((a, b) => a.casos_por_via_formal - b.casos_por_via_formal)[0];
         highlight.innerHTML =
-            `<strong style="color:#c62828;">⬆ Mayor carga:</strong> ${peor.localidad} con ${peor.casos_por_via_formal} casos por institución (${peor.zona}). ` +
-            `<strong style="color:#2e7d32;">⬇ Menor carga:</strong> ${mejor.localidad} con ${mejor.casos_por_via_formal} casos por institución (${mejor.zona}).`;
+            `<strong style="color:#c62828;">⬆ Mayor carga:</strong> ${peor.localidad} con ${fmtNum(peor.casos_por_via_formal, 1)} casos por institución (${peor.zona}). ` +
+            `<strong style="color:#2e7d32;">⬇ Menor carga (zona urbana):</strong> ${mejor.localidad} con ${fmtNum(mejor.casos_por_via_formal, 1)} casos por institución (${mejor.zona}).`;
     }
 }
 
