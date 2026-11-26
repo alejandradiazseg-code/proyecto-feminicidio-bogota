@@ -120,6 +120,23 @@ def main():
            VALUES %s""",
         filas,
     )
+    # Población de mujeres por localidad (campo PobMujeres del OMEG, 2025):
+    # llena localidad.poblacion_fem del Modelo Físico, que usa la tasa por
+    # 100.000 mujeres. Debe ser idéntica en los dos archivos del corte.
+    poblacion = {}
+    for fuente, url, _, _ in OMEG_CORTE_ANUAL:
+        gdf = gpd.read_file(obtener_snapshot(url))
+        if "PobMujeres" not in gdf.columns:
+            raise KeyError(f"{fuente}: no existe la columna 'PobMujeres'. Columnas: {gdf.columns.tolist()}")
+        for _, row in gdf.iterrows():
+            nombre = LOCALIDAD_CODIGO[str(int(float(row["Localidad"])))]
+            valor = int(row["PobMujeres"])
+            if poblacion.setdefault(nombre, valor) != valor:
+                raise ValueError(f"PobMujeres distinta entre archivos para {nombre}")
+    psycopg2.extras.execute_batch(
+        cur, "UPDATE localidad SET poblacion_fem = %s WHERE id_localidad = %s",
+        [(v, loc_id_map[n]) for n, v in poblacion.items()])
+    print(f"  poblacion_fem: {len(poblacion)} localidades, {sum(poblacion.values()):,} mujeres (OMEG 2025)")
     conn.commit()
 
     cur.execute("""SELECT fuente, COUNT(*), SUM(conteo_casos), MIN(fecha_corte)

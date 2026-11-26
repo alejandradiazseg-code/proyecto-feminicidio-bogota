@@ -209,11 +209,14 @@ def feminicidio_por_zona(fuente: str = Query("INMLCF_HOMICIDIOS")):
     """Conteo de casos por zona."""
     query = """
     SELECT z.nombre AS zona,
-           SUM(fa.conteo_casos) AS total_casos,
-           COUNT(DISTINCT l.id_localidad) AS num_localidades
+           SUM(c.casos) AS total_casos,
+           COUNT(*) AS num_localidades,
+           SUM(l.poblacion_fem) AS poblacion_fem
     FROM zona z
     JOIN localidad l ON l.id_zona = z.id_zona
-    LEFT JOIN feminicidio_agregado fa ON fa.id_localidad = l.id_localidad AND fa.fuente = %s
+    LEFT JOIN (SELECT id_localidad, SUM(conteo_casos) AS casos
+               FROM feminicidio_agregado WHERE fuente = %s
+               GROUP BY id_localidad) c ON c.id_localidad = l.id_localidad
     GROUP BY z.nombre
     ORDER BY total_casos DESC NULLS LAST;
     """
@@ -268,6 +271,13 @@ def indicador_desierto():
            COALESCE(ci.casas_igualdad, 0) AS casas_igualdad,
            COALESCE(ca.cais, 0) AS cais,
            COALESCE(f.homicidios, 0) AS homicidios,
+           l.poblacion_fem,
+           -- Tasa anual promedio 2015–2024 por 100.000 mujeres (población OMEG 2025)
+           CASE WHEN l.poblacion_fem > 0
+                THEN ROUND(COALESCE(f.homicidios, 0)::numeric / 10 / l.poblacion_fem * 100000, 1)
+                ELSE NULL END AS tasa_anual_100k,
+           -- Sin comisarías ni casas de justicia el índice es una división por
+           -- cero: queda NULL («no calculable»), no 0.
            -- COALESCE en cada término: si una localidad no tiene Casas de Justicia
            -- (o Comisarías), el LEFT JOIN deja NULL y la suma completa sería NULL.
            CASE WHEN (COALESCE(c.comisarias, 0) + COALESCE(cj.casas_justicia, 0)) > 0
@@ -345,22 +355,27 @@ def indicador_negligencia_forense():
     Compara casos sin clasificación vs total de homicidios de mujeres por localidad.
     Una proporción alta sugiere problemas sistemáticos de documentación forense.
     """
+    # La circunstancia «Feminicidio» solo existe en el INMLCF desde 2018: su
+    # porcentaje se calcula sobre los homicidios del MISMO período (2018–2024).
+    # Un conteo 0 da 0 % (no NULL): NULL solo cuando no hay homicidios.
     query = """
     SELECT l.nombre AS localidad, z.nombre AS zona,
            COALESCE(h.total, 0) AS homicidios_total,
+           COALESCE(h.total_2018, 0) AS homicidios_2018_2024,
            COALESCE(f.total, 0) AS feminicidios_forenses,
            COALESCE(vg.total, 0) AS violencia_genero_amplia,
            COALESCE(si.total, 0) AS sin_clasificacion,
            CASE WHEN h.total > 0
-                THEN ROUND(si.total::numeric / h.total * 100, 1)
+                THEN ROUND(COALESCE(si.total, 0)::numeric / h.total * 100, 1)
                 ELSE NULL END AS pct_sin_clasificacion,
-           CASE WHEN h.total > 0
-                THEN ROUND(f.total::numeric / h.total * 100, 1)
+           CASE WHEN h.total_2018 > 0
+                THEN ROUND(COALESCE(f.total, 0)::numeric / h.total_2018 * 100, 1)
                 ELSE NULL END AS pct_feminicidio_explicito
     FROM localidad l
     JOIN zona z ON z.id_zona = l.id_zona
     LEFT JOIN (
-        SELECT id_localidad, SUM(conteo_casos) AS total
+        SELECT id_localidad, SUM(conteo_casos) AS total,
+               SUM(conteo_casos) FILTER (WHERE anio >= 2018) AS total_2018
         FROM feminicidio_agregado WHERE fuente = 'INMLCF_HOMICIDIOS'
         GROUP BY id_localidad
     ) h ON h.id_localidad = l.id_localidad
@@ -409,49 +424,6 @@ def indicador_brecha_riesgo_muerte():
         FROM feminicidio_agregado WHERE fuente = 'OMEG_ASESINATOS_T3'
         GROUP BY id_localidad
     ) a ON a.id_localidad = l.id_localidad
-    ORDER BY tasa_conversion_pct DESC NULLS LAST;
-    """
-    return fetch_all(query)
-
-
-@app.get("/api/indicadores/negligencia-forense")
-def indicador_negligencia_forense():
-    query = """
-    SELECT l.nombre AS localidad, z.nombre AS zona,
-           COALESCE(h.total, 0) AS homicidios_total,
-           COALESCE(f.total, 0) AS feminicidios_forenses,
-           COALESCE(vg.total, 0) AS violencia_genero_amplia,
-           COALESCE(si.total, 0) AS sin_clasificacion,
-           CASE WHEN h.total > 0
-                THEN ROUND(si.total::numeric / h.total * 100, 1)
-                ELSE NULL END AS pct_sin_clasificacion,
-           CASE WHEN h.total > 0
-                THEN ROUND(f.total::numeric / h.total * 100, 1)
-                ELSE NULL END AS pct_feminicidio_explicito
-    FROM localidad l
-    JOIN zona z ON z.id_zona = l.id_zona
-    LEFT JOIN (SELECT id_localidad, SUM(conteo_casos) AS total FROM feminicidio_agregado WHERE fuente = 'INMLCF_HOMICIDIOS' GROUP BY id_localidad) h ON h.id_localidad = l.id_localidad
-    LEFT JOIN (SELECT id_localidad, SUM(conteo_casos) AS total FROM feminicidio_agregado WHERE fuente = 'INMLCF_FEMINICIDIO' GROUP BY id_localidad) f ON f.id_localidad = l.id_localidad
-    LEFT JOIN (SELECT id_localidad, SUM(conteo_casos) AS total FROM feminicidio_agregado WHERE fuente = 'INMLCF_VIOLENCIA_GENERO' GROUP BY id_localidad) vg ON vg.id_localidad = l.id_localidad
-    LEFT JOIN (SELECT id_localidad, SUM(conteo_casos) AS total FROM feminicidio_agregado WHERE fuente = 'INMLCF_SIN_INFO' GROUP BY id_localidad) si ON si.id_localidad = l.id_localidad
-    ORDER BY pct_sin_clasificacion DESC NULLS LAST;
-    """
-    return fetch_all(query)
-
-
-@app.get("/api/indicadores/brecha-riesgo-muerte")
-def indicador_brecha_riesgo_muerte():
-    query = """
-    SELECT l.nombre AS localidad, z.nombre AS zona,
-           COALESCE(r.mujeres_en_riesgo, 0) AS mujeres_en_riesgo_2025,
-           COALESCE(a.asesinadas, 0) AS asesinadas_2025,
-           CASE WHEN r.mujeres_en_riesgo > 0
-                THEN ROUND(a.asesinadas::numeric / r.mujeres_en_riesgo * 100, 2)
-                ELSE NULL END AS tasa_conversion_pct
-    FROM localidad l
-    JOIN zona z ON z.id_zona = l.id_zona
-    LEFT JOIN (SELECT id_localidad, SUM(conteo_casos) AS mujeres_en_riesgo FROM feminicidio_agregado WHERE fuente = 'OMEG_RIESGO_T3' GROUP BY id_localidad) r ON r.id_localidad = l.id_localidad
-    LEFT JOIN (SELECT id_localidad, SUM(conteo_casos) AS asesinadas FROM feminicidio_agregado WHERE fuente = 'OMEG_ASESINATOS_T3' GROUP BY id_localidad) a ON a.id_localidad = l.id_localidad
     ORDER BY tasa_conversion_pct DESC NULLS LAST;
     """
     return fetch_all(query)

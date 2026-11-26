@@ -132,17 +132,23 @@ seg["zona"] = seg.LOCCODIGO.astype(int).map(cod_zona)
 pz = seg.pivot_table(index="zona", columns="anio", values="indice", aggfunc="mean")
 cambio = (pz[2019] - pz[2015]).round(2)
 
+desierto = {r["localidad"]: r for r in fetch_all(
+    "SELECT l.nombre localidad, l.poblacion_fem pob, SUM(fa.conteo_casos) hom FROM localidad l "
+    "JOIN feminicidio_agregado fa USING (id_localidad) WHERE fa.fuente='INMLCF_HOMICIDIOS' GROUP BY 1, 2")}
+pob = {k: int(v["pob"]) for k, v in desierto.items()}
+tasa = {k: round(float(v["hom"]) / 10 / int(v["pob"]) * 100000, 1) for k, v in desierto.items()}
+rank_candelaria = sorted(tasa.values(), reverse=True).index(tasa["La Candelaria"]) + 1
+
 serie = {r["anio"]: int(r["c"]) for r in fetch_all(
     "SELECT anio, SUM(conteo_casos) c FROM feminicidio_agregado WHERE fuente='INMLCF_HOMICIDIOS' GROUP BY anio")}
 
 esperado = {
     "Homicidios de mujeres INMLCF 2015–2024 (total Bogotá)": es(total_inmlcf),
-    "Tipificados como feminicidio · Fiscalía": str(consumado),
-    "Tentativas · Fiscalía": str(tentativa),
+    "Víctimas de feminicidio consumado · Fiscalía": str(consumado),
+    "Víctimas de tentativa · Fiscalía": f"{tentativa} víctimas de tentativa",
     "Tasa de tipificación": f"{round(consumado / total_inmlcf * 100)}%",
-    "Porcentaje no tipificado": f"{100 - round(consumado / total_inmlcf * 100)}%",
-    "Casos no tipificados": f"{total_inmlcf - consumado} casos",
-    "Tentativas por consumado": es(tentativa / consumado, 1),
+    "Por cada 100 asesinadas": f"la Fiscalía registró {round(consumado / total_inmlcf * 100)} víctimas",
+    "Diferencia entre fuentes": f"dos fuentes ({total_inmlcf - consumado})",
     "Comisarías de Familia": f"({inst['COMISARIA_FAMILIA']})",
     "Casas de Justicia": f"({inst['CASA_JUSTICIA']})",
     "Casas de Igualdad": f"({inst['CASA_IGUALDAD']})",
@@ -158,6 +164,9 @@ esperado = {
     "Violencia sexual": f"Violencia sexual: {circ.get('Violencia sexual', 0)} casos",
     "Seguridad nocturna Sur 2015→2019": f"+{es(cambio['Sur'], 2)} puntos",
     "Seguridad nocturna Norte 2015→2019": f"(+{es(cambio['Norte'], 2)})",
+    "Población de mujeres La Candelaria": f"Con {es(pob['La Candelaria'])} mujeres",
+    "Tasa La Candelaria": f"({es(tasa['La Candelaria'], 1)} por 100.000 al año)",
+    "Puesto de La Candelaria por tasa": f"es la {rank_candelaria}.ª más alta",
 }
 for nombre, valor in esperado.items():
     check(valor in texto, f"{nombre}: «{valor}»")
@@ -166,10 +175,35 @@ check(neg["INMLCF_FEMINICIDIO"] == circ.get("Feminicidio", 0),
 check(pz.loc["Sur", 2019] > pz.loc["Norte", 2019], "En 2019 el índice del Sur supera al del Norte (afirmación del texto)")
 
 # ---------------------------------------------------------------------------
-print("\n5. Cifras desactualizadas que no deben aparecer")
+print("\n5. Cifras y frases desactualizadas que no deben aparecer")
 for viejo in ["63%", "+0.89", "+0.74", "Violencia de pareja: 80", "89 casos en Bogotá total", "Padilla",
-              "112 440"]:  # línea no verificable, reemplazada por la Línea Púrpura
+              "112 440",  # línea no verificable, reemplazada por la Línea Púrpura
+              "Índice vía formal", "procesos tipificados", "tendencia de mejora sostenida",
+              "3,5 tentativas", "casi un punto", "Ver directorio"]:
     check(viejo not in texto, f"no aparece «{viejo}»")
+
+# ---------------------------------------------------------------------------
+print("\n6. Calidad de los datos publicados")
+inst_json = json.load(open("frontend/data/instituciones.geojson", encoding="utf-8"))["features"]
+numericos = [f["properties"]["nombre"] for f in inst_json if re.fullmatch(r"\d+", str(f["properties"]["nombre"] or ""))]
+check(not numericos, f"ninguna institución con nombre numérico ({len(numericos)} encontradas)")
+sin_dir = [f["properties"]["nombre"] for f in inst_json if not f["properties"]["direccion"]]
+check(not sin_dir, f"todas las instituciones tienen dirección de la fuente ({len(sin_dir)} sin dirección)")
+check(not any("Ver directorio" in str(f["properties"]["direccion"]) for f in inst_json),
+      "las direcciones salen del GeoJSON oficial (no hay textos escritos a mano)")
+negf = json.load(open("frontend/data/negligencia-forense.json", encoding="utf-8"))
+check(all(r["pct_feminicidio_explicito"] is not None for r in negf if r["homicidios_2018_2024"] > 0),
+      "% feminicidio explícito: 0 % (no nulo) donde hay homicidios y ningún feminicidio")
+check(all(r["pct_sin_clasificacion"] is not None for r in negf if r["homicidios_total"] > 0),
+      "% sin circunstancia: sin nulos donde hay homicidios")
+fem = sum(r["feminicidios_forenses"] for r in negf)
+h18 = sum(r["homicidios_2018_2024"] for r in negf)
+check(fem == neg["INMLCF_FEMINICIDIO"] and h18 > 0,
+      f"% feminicidio explícito con el mismo período 2018–2024: {fem} de {h18} = {es(fem / h18 * 100, 1)} %")
+des = json.load(open("frontend/data/desierto-institucional.json", encoding="utf-8"))
+nulos = [r["localidad"] for r in des if r["casos_por_via_formal"] is None]
+check(all((r["comisarias"] + r["casas_justicia"]) == 0 for r in des if r["casos_por_via_formal"] is None),
+      f"desierto institucional nulo solo con 0 puntos de atención (no calculable: {', '.join(nulos) or 'ninguna'})")
 
 print(f"\n{'✔ Todo concuerda' if not fallos else f'✘ {fallos} comprobación(es) con diferencias'}")
 sys.exit(1 if fallos else 0)

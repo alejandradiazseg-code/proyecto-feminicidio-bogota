@@ -69,13 +69,18 @@ def main():
     if sin_match:
         print(f"Sin match: {sin_match}")
 
+    # ST_Intersects también es verdadero cuando dos polígonos solo comparten un
+    # borde o se solapan en una astilla por diferencias de digitalización (75 de
+    # 127 pares eran < 1 % del área de la UPL). Por eso cada UPL toma el valor de
+    # la localidad con la que comparte MÁS área (una fila por UPL y año).
     cur.execute("""
-        SELECT u.id_upl, l.id_localidad
+        SELECT DISTINCT ON (u.id_upl) u.id_upl, l.id_localidad
         FROM upl u
         JOIN localidad l ON ST_Intersects(u.geom, l.geom)
+        ORDER BY u.id_upl, ST_Area(ST_Intersection(u.geom, l.geom)::geography) DESC
     """)
     pares = cur.fetchall()
-    print(f"Pares UPL-Localidad (ST_Intersects): {len(pares)}")
+    print(f"UPL asignadas a su localidad de mayor área común: {len(pares)}")
 
     inserts = []
     for id_upl, id_loc in pares:

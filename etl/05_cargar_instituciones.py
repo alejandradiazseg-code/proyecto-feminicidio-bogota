@@ -16,6 +16,34 @@ FUENTES = {
     'CAI': 'https://datosabiertos.bogota.gov.co/dataset/bcc51101-762b-4e13-9455-f77502c75a0f/resource/202c5810-6880-43f8-b801-df70aaf6d237/download/comandoatencioninmediata.geojson'
 }
 
+# Columna de cada campo en el GeoJSON de cada fuente (verificadas el 25-nov-2026).
+COLUMNAS = {
+    'COMISARIA_FAMILIA': {'nombre': 'OSSUOpera', 'direccion': 'OSSDirecc', 'telefono': 'OSSTelefo', 'horario': 'OSSHAtenc'},
+    'CASA_JUSTICIA':     {'nombre': 'CJUNOMBRE', 'direccion': 'CJUDIR_SIT', 'telefono': 'CJUTELEFON', 'horario': 'CJUHORARIO'},
+    'CASA_IGUALDAD':     {'nombre': 'CIONombre', 'direccion': 'CIODirecci', 'telefono': 'CIOTelefon', 'horario': 'CIOHorario'},
+    'CAI':               {'nombre': 'CAINOMBRE', 'direccion': 'CAIDIR_SIT', 'telefono': 'CAITELEFON', 'horario': 'CAIHORARIO'},
+}
+
+
+def columna_exacta(gdf, tipo, campo):
+    col = COLUMNAS[tipo][campo]
+    if col not in gdf.columns:
+        raise KeyError(f"{tipo}: no existe la columna '{col}' ({campo}). Columnas: {gdf.columns.tolist()}")
+    return col
+
+
+def acortar(texto, maximo):
+    """Ajusta el texto al largo del Modelo Físico (telefono VARCHAR(30)).
+    Varias comisarías listan todas sus extensiones; se corta en un separador
+    y se marca con «…» para que no parezca un número completo."""
+    texto = " ".join(texto.split())
+    if len(texto) <= maximo:
+        return texto
+    corte = texto[:maximo - 1]
+    pos = max(corte.rfind(s) for s in (" ", ",", "-"))
+    return (corte[:pos] if pos > 0 else corte).rstrip(" ,-") + "…"
+
+
 def download_file(url, dest_path):
     if not os.path.exists(dest_path):
         print(f"Descargando {url}...")
@@ -57,20 +85,24 @@ def main():
         print(f"Total: {len(gdf)}")
         print(f"Cols: {gdf.columns.tolist()}")
 
-        # Mapeo tentativo de columnas
-        name_col = next((c for c in ['CMFNombre', 'CJuNombre', 'CIO_Nombre', 'CAINOMBRE', 'nombre'] if c in gdf.columns), gdf.columns[1])
-        dir_col = next((c for c in ['CMFDirecci', 'CJuDirecci', 'CIO_Direcc', 'CAIDIR_SIT', 'direccion'] if c in gdf.columns), None)
-        tel_col = next((c for c in ['CMFTelefon', 'CJuTelefon', 'CIO_Telefo', 'CAITELEFON', 'telefono'] if c in gdf.columns), None)
-        horario_col = next((c for c in ['CMFHorario', 'CJuHorario', 'CIO_Horari', 'CAIHORARIO', 'horario'] if c in gdf.columns), None)
-        
+        # Columnas exactas de cada GeoJSON (nombre, dirección, teléfono, horario).
+        # Sin valores por defecto: si la fuente cambia sus columnas, el ETL se
+        # detiene y dice cuál falta, en vez de cargar en silencio otra columna
+        # (antes se tomaba gdf.columns[1] y las Casas de Justicia quedaban con
+        # el código de entidad «137» como nombre).
+        name_col, dir_col, tel_col, horario_col = (
+            columna_exacta(gdf, tipo, campo) for campo in ('nombre', 'direccion', 'telefono', 'horario'))
+
         # Spatial join para buscar id_localidad
         joined = gpd.sjoin(gdf, gdf_loc, how='left', predicate='within')
-        
+
         for idx, row in joined.iterrows():
             id_loc = None if pd.isna(row['id_localidad']) else int(row['id_localidad'])
-            nombre = str(row[name_col]) if not pd.isna(row[name_col]) else f"{tipo}_{idx}"
+            if pd.isna(row[name_col]) or not str(row[name_col]).strip():
+                raise ValueError(f"{tipo}: registro {idx} sin nombre en la columna {name_col}")
+            nombre = str(row[name_col]).strip()
             direccion = str(row[dir_col]) if dir_col and not pd.isna(row[dir_col]) else None
-            telefono = str(row[tel_col]) if tel_col and not pd.isna(row[tel_col]) else None
+            telefono = acortar(str(row[tel_col]), 30) if not pd.isna(row[tel_col]) else None
             horario = str(row[horario_col]) if horario_col and not pd.isna(row[horario_col]) else None
             wkt = row['geometry'].wkt
             
