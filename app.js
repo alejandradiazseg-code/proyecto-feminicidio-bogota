@@ -126,12 +126,16 @@ function actualizarHeroYKPIs() {
     animarNumero("kpi-homicidios", totalHom);
     animarNumero("kpi-feminicidios", totalFem);
     animarNumero("kpi-sin-info", totalSI);
+    const hom18 = datosNegligencia.reduce((s, d) => s + (d.homicidios_2018_2024 || 0), 0);
+    const kfd = document.getElementById("kpi-feminicidios-detalle");
+    if (kfd && hom18) kfd.textContent =
+        `Circunstancia «Feminicidio» (INMLCF, categoría usada desde 2018) · ${fmtNum(totalFem / hom18 * 100, 1)} % de ${fmtNum(hom18)} homicidios 2018–2024`;
 
     const conInd = datosIndicadores.filter(d => d.casos_por_via_formal != null);
     if (conInd.length > 0) {
         const peor = conInd.reduce((m, d) => d.casos_por_via_formal > m.casos_por_via_formal ? d : m);
         document.getElementById("kpi-peor").textContent = peor.localidad;
-        document.getElementById("kpi-peor-valor").textContent = `${fmtNum(peor.casos_por_via_formal, 1)} casos por institución formal`;
+        document.getElementById("kpi-peor-valor").textContent = `${fmtNum(peor.casos_por_via_formal, 1)} homicidios por comisaría o casa de justicia`;
     }
 }
 
@@ -158,15 +162,16 @@ function actualizarIndicadoresNegligencia() {
         const mejor = conInd.reduce((m, d) => d.casos_por_via_formal < m.casos_por_via_formal ? d : m);
         document.getElementById("ind-via-formal").textContent = fmtNum(peor.casos_por_via_formal, 1);
         document.getElementById("ind-via-formal-peor").textContent =
-            `⬆ Peor: ${peor.localidad} (${fmtNum(peor.casos_por_via_formal, 1)} casos por institución)`;
+            `⬆ Peor: ${peor.localidad} (${fmtNum(peor.casos_por_via_formal, 1)} homicidios por punto de atención)`;
         document.getElementById("ind-via-formal-mejor").textContent =
-            `⬇ Mejor (zona urbana): ${mejor.localidad} (${fmtNum(mejor.casos_por_via_formal, 1)} casos por institución)`;
+            `⬇ Mejor (zona urbana): ${mejor.localidad} (${fmtNum(mejor.casos_por_via_formal, 1)} homicidios por punto de atención)`;
     }
 
     const conSI = datosNegligencia.filter(d => d.pct_sin_clasificacion != null);
     if (conSI.length > 0) {
         const peorSI  = conSI.reduce((m, d) => d.pct_sin_clasificacion > m.pct_sin_clasificacion ? d : m);
-        const mejorSI = conSI.reduce((m, d) => d.pct_sin_clasificacion < m.pct_sin_clasificacion ? d : m);
+        const urbSI   = conSI.filter(d => d.zona !== "Rural");   // Sumapaz: 1 caso en 10 años
+        const mejorSI = urbSI.reduce((m, d) => d.pct_sin_clasificacion < m.pct_sin_clasificacion ? d : m);
         // Bogotá total, calculado con los mismos datos de la tabla
         const totSI  = datosNegligencia.reduce((s, d) => s + (d.sin_clasificacion || 0), 0);
         const totHom = datosNegligencia.reduce((s, d) => s + (d.homicidios_total || 0), 0);
@@ -174,18 +179,18 @@ function actualizarIndicadoresNegligencia() {
         document.getElementById("ind-sin-info-peor").textContent =
             `⬆ Peor: ${peorSI.localidad} (${fmtNum(peorSI.pct_sin_clasificacion)} %)`;
         document.getElementById("ind-sin-info-mejor").textContent =
-            `⬇ Mejor: ${mejorSI.localidad} (${fmtNum(mejorSI.pct_sin_clasificacion)} %)`;
+            `⬇ Mejor (zona urbana): ${mejorSI.localidad} (${fmtNum(mejorSI.pct_sin_clasificacion)} %)`;
     }
 
     const conBrecha = datosBrecha.filter(d => d.tasa_conversion_pct != null && d.tasa_conversion_pct > 0);
     if (conBrecha.length > 0) {
         const peorB  = conBrecha.reduce((m, d) => d.tasa_conversion_pct > m.tasa_conversion_pct ? d : m);
         const mejorB = conBrecha.reduce((m, d) => d.tasa_conversion_pct < m.tasa_conversion_pct ? d : m);
-        document.getElementById("ind-brecha").textContent = fmtNum(peorB.tasa_conversion_pct, 1) + " %";
+        document.getElementById("ind-brecha").textContent = fmtNum(peorB.tasa_conversion_pct, 1);
         document.getElementById("ind-brecha-peor").textContent =
             `⬆ Peor: ${peorB.localidad} · ${peorB.asesinadas_2025} asesinatos frente a ${peorB.mujeres_en_riesgo_2025} mujeres en riesgo`;
         document.getElementById("ind-brecha-mejor").textContent =
-            `⬇ Mejor: ${mejorB.localidad} (${fmtNum(mejorB.tasa_conversion_pct, 1)} %)`;
+            `⬇ Menor: ${mejorB.localidad} (${fmtNum(mejorB.tasa_conversion_pct, 1)} por cada 100)`;
     }
 }
 
@@ -208,10 +213,11 @@ function pintarLocalidades(geojson) {
                     <hr style="margin:8px 0;">
                     <table style="width:100%;font-size:0.82rem;">
                         <tr><td>🔪 Homicidios 2015–2024</td><td><b>${n.homicidios_total || 0}</b></td></tr>
-                        <tr><td>⚡ Feminicidios forenses</td><td><b>${n.feminicidios_forenses || 0}</b></td></tr>
-                        <tr><td>❓ Sin clasificación</td><td><b>${n.sin_clasificacion || 0} (${n.pct_sin_clasificacion || 0}%)</b></td></tr>
-                        <tr><td>📊 Índice vía formal</td><td><b>${d.casos_por_via_formal ?? '—'}</b></td></tr>
-                        <tr><td>🚨 Índice CAI</td><td><b>${d.casos_por_cai ?? '—'}</b></td></tr>
+                        <tr><td>📈 Tasa anual por 100.000 mujeres</td><td><b>${d.tasa_anual_100k != null ? fmtNum(d.tasa_anual_100k, 1) : '—'}</b></td></tr>
+                        <tr><td>⚡ Feminicidios forenses 2018–2024</td><td><b>${n.feminicidios_forenses || 0}${n.pct_feminicidio_explicito != null ? ` (${fmtNum(n.pct_feminicidio_explicito, 1)} %)` : ''}</b></td></tr>
+                        <tr><td>❓ Sin circunstancia registrada</td><td><b>${n.sin_clasificacion || 0} (${fmtNum(n.pct_sin_clasificacion || 0, 1)} %)</b></td></tr>
+                        <tr><td>📊 Desierto institucional</td><td><b>${d.casos_por_via_formal != null ? fmtNum(d.casos_por_via_formal, 1) : 'no calculable (0 puntos)'}</b></td></tr>
+                        <tr><td>🚨 Homicidios por CAI</td><td><b>${d.casos_por_cai != null ? fmtNum(d.casos_por_cai, 1) : '—'}</b></td></tr>
                         <tr><td>👥 En riesgo 2025</td><td><b>${b.mujeres_en_riesgo_2025 || 0}</b></td></tr>
                         <tr><td>💀 Asesinadas 2025</td><td><b>${b.asesinadas_2025 || 0}</b></td></tr>
                     </table>
@@ -239,11 +245,14 @@ function estiloLocalidad(f) {
     if (capaActiva === "homicidios")  valor = n.homicidios_total || 0;
     else if (capaActiva === "feminicidio") valor = n.feminicidios_forenses || 0;
     else if (capaActiva === "sin-info")    valor = n.pct_sin_clasificacion || 0;
-    else if (capaActiva === "via-formal")  valor = d.casos_por_via_formal || 0;
+    else if (capaActiva === "via-formal")  valor = d.casos_por_via_formal ?? null;
     return { fillColor: colorPorValor(valor, capaActiva), weight: 1.5, opacity: 1, color: "#333", fillOpacity: 0.75 };
 }
 
+const COLOR_NO_CALCULABLE = "#bdbdbd";
+
 function colorPorValor(v, tipo) {
+    if (v == null) return COLOR_NO_CALCULABLE;   // p. ej. desierto institucional sin puntos de atención
     const escalas = {
         "homicidios":  [[0,"#f3e5f5"],[10,"#e1bee7"],[30,"#ce93d8"],[60,"#ab47bc"],[100,"#8e24aa"],[150,"#6a1b9a"]],
         "feminicidio": [[0,"#fce4ec"],[2,"#f48fb1"],[5,"#f06292"],[8,"#e91e63"],[12,"#c2185b"],[15,"#880e4f"]],
@@ -263,9 +272,9 @@ function agregarLeyenda() {
         const div = L.DomUtil.create("div", "leyenda");
         const labels = {
             "homicidios":  ["Homicidios 2015–2024", [[0,"0"],[10,"1–10"],[30,"11–30"],[60,"31–60"],[100,"61–100"],[150,"100+"]]],
-            "feminicidio": ["Feminicidios forenses", [[0,"0"],[2,"1–2"],[5,"3–5"],[8,"6–8"],[12,"9–12"],[15,"12+"]]],
+            "feminicidio": ["Feminicidios forenses 2018–2024", [[0,"0"],[2,"1–2"],[5,"3–5"],[8,"6–8"],[12,"9–12"],[15,"12+"]]],
             "sin-info":    ["% Sin clasificación",   [[0,"0%"],[30,"30%"],[50,"50%"],[65,"65%"],[80,"80%"],[95,"95%"]]],
-            "via-formal":  ["Índice vía formal",      [[0,"0"],[10,"1–10"],[20,"11–20"],[30,"21–30"],[45,"31–45"],[55,"45+"]]]
+            "via-formal":  ["Desierto institucional", [[0,"0"],[10,"1–10"],[20,"11–20"],[30,"21–30"],[45,"31–45"],[55,"45+"],[null,"No calculable (sin puntos de atención)"]]]
         };
         const [titulo, escala] = labels[capaActiva];
         div.innerHTML = `<strong>${titulo}</strong><br>`;
@@ -356,12 +365,13 @@ function dibujarChartZonas(datosApi) {
         <div class="zona-fila encabezado"><span>Zona</span><span>Participación</span><span class="zona-cifras">Casos · prom./localidad</span></div>` +
         datos.map(d => {
             const prom = d.num_localidades ? d.total_casos / d.num_localidades : 0;
+            const tasa = tasaAnual(d);
             return `
             <div class="zona-fila">
                 <span class="zona-nombre"><span class="zona-badge" style="background:${COLORES_ZONA[d.zona]};"></span>${d.zona}</span>
                 <span class="zona-barra" title="${pct(d.total_casos)}"><span style="width:${d.total_casos / max * 100}%;background:${COLORES_ZONA[d.zona]};"></span></span>
                 <span class="zona-cifras"><strong>${fmtNum(d.total_casos)}</strong> · ${pct(d.total_casos)}
-                    <small>${fmtNum(prom, 1)} por localidad (${d.num_localidades} ${d.num_localidades === 1 ? "localidad" : "localidades"})</small></span>
+                    <small>${fmtNum(prom, 1)} por localidad (${d.num_localidades} ${d.num_localidades === 1 ? "localidad" : "localidades"})</small>${tasa != null ? `<small>tasa anual: ${fmtNum(tasa, 1)} por 100.000 mujeres</small>` : ""}</span>
             </div>`;
         }).join("");
 
@@ -373,10 +383,25 @@ function dibujarChartZonas(datosApi) {
                       Math.max(1, otrasUrbanas.reduce((s, d) => s + d.num_localidades, 0));
     const promMayor = mayor.total_casos / mayor.num_localidades;
     document.getElementById("dona-lectura").innerHTML =
-        `<strong style="color:${COLORES_ZONA[mayor.zona]};">Zona ${mayor.zona}</strong> concentra el ${pct(mayor.total_casos)} de los casos. ` +
+        `<strong style="color:${COLORES_ZONA[mayor.zona]};">Zona ${mayor.zona}</strong> concentra el ${pct(mayor.total_casos)} de los casos (conteo absoluto). ` +
         `Cada una de sus localidades registra en promedio ${fmtNum(promMayor, 1)} homicidios de mujeres, ` +
         `${fmtNum(promMayor / promOtras, 1)} veces más que una localidad de las demás zonas urbanas (${fmtNum(promOtras, 1)}). ` +
-        `La <strong style="color:${COLORES_ZONA.Rural};">Zona Rural</strong> (Sumapaz) tiene muy pocos casos por su baja densidad poblacional.`;
+        lecturaTasas(datos) +
+        `La <strong style="color:${COLORES_ZONA.Rural};">Zona Rural</strong> (Sumapaz) tiene 1 caso en 10 años y muy poca población: su tasa no es comparable.`;
+}
+
+// Tasa anual promedio 2015–2024 por 100.000 mujeres (población OMEG 2025)
+function tasaAnual(d) {
+    const pob = Number(d.poblacion_fem);
+    return pob > 0 ? Number(d.total_casos) / 10 / pob * 100000 : null;
+}
+
+function lecturaTasas(datos) {
+    const urb = datos.filter(d => d.zona !== "Rural" && tasaAnual(d) != null)
+                     .sort((a, b) => tasaAnual(b) - tasaAnual(a));
+    if (urb.length < 2) return "";
+    return `En proporción a la población (tasa anual por 100.000 mujeres): ` +
+        urb.map(d => `${d.zona} ${fmtNum(tasaAnual(d), 1)}`).join(", ") + ". ";
 }
 
 // ── FORMATO (es-CO) ───────────────────────────────────────
@@ -447,7 +472,7 @@ function dibujarChartIndicador(datos) {
         data: {
             labels: top10.map(d => d.localidad),
             datasets: [{
-                label: "Casos por institución formal",
+                label: "Homicidios por punto de atención",
                 data: top10.map(d => d.casos_por_via_formal),
                 backgroundColor: colores,
                 borderRadius: 4
@@ -460,12 +485,12 @@ function dibujarChartIndicador(datos) {
                 legend: { display: false },
                 tooltip: {
                     callbacks: {
-                        label: ctx => ` ${ctx.parsed.x} casos por institución · Zona ${top10[ctx.dataIndex].zona}`
+                        label: ctx => ` ${fmtNum(ctx.parsed.x, 1)} homicidios por punto de atención · Zona ${top10[ctx.dataIndex].zona}`
                     }
                 }
             },
             scales: {
-                x: { title: { display: true, text: "Casos por institución formal (2015–2024)" } }
+                x: { title: { display: true, text: "Homicidios por comisaría o casa de justicia (2015–2024)" } }
             }
         }
     });
@@ -476,9 +501,15 @@ function dibujarChartIndicador(datos) {
         const mejor = [...datos.filter(d => d.casos_por_via_formal != null && d.zona !== "Rural")]
             .sort((a, b) => a.casos_por_via_formal - b.casos_por_via_formal)[0];
         highlight.innerHTML =
-            `<strong style="color:#c62828;">⬆ Mayor carga:</strong> ${peor.localidad} con ${fmtNum(peor.casos_por_via_formal, 1)} casos por institución (${peor.zona}). ` +
-            `<strong style="color:#2e7d32;">⬇ Menor carga (zona urbana):</strong> ${mejor.localidad} con ${fmtNum(mejor.casos_por_via_formal, 1)} casos por institución (${mejor.zona}).`;
+            `<strong style="color:#c62828;">⬆ Mayor carga:</strong> ${peor.localidad} con ${fmtNum(peor.casos_por_via_formal, 1)} homicidios por punto de atención (${peor.zona}). ` +
+            `<strong style="color:#2e7d32;">⬇ Menor carga (zona urbana):</strong> ${mejor.localidad} con ${fmtNum(mejor.casos_por_via_formal, 1)} (${mejor.zona}). ` +
+            sinPuntos(datos);
     }
+}
+
+function sinPuntos(datos) {
+    const sin = datos.filter(d => d.casos_por_via_formal == null).map(d => d.localidad);
+    return sin.length ? `<strong>${sin.join(", ")}</strong>: sin comisarías ni casas de justicia dentro de su límite; el índice no se puede calcular (división por cero).` : "";
 }
 
 // ── BUSCADOR DE INSTITUCIONES ─────────────────────────────
@@ -500,7 +531,15 @@ document.addEventListener("change", e => {
     const contenedor = document.getElementById("resultado-instituciones");
     if (!loc) { contenedor.innerHTML = ""; return; }
 
-    const insts = todosInstsData[loc] || [];
+    // Instituciones que llevan el nombre de la localidad pero están ubicadas en otra
+    // (p. ej. la Comisaría de Familia La Candelaria funciona en Santa Fe).
+    const sinTilde = t => (t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+    const externas = Object.entries(todosInstsData)
+        .filter(([otra]) => otra !== loc)
+        .flatMap(([otra, lista]) => lista
+            .filter(i => i.tipo !== "CAI" && sinTilde(i.nombre).includes(sinTilde(loc)))
+            .map(i => ({ ...i, direccion: `${i.direccion || ""} · ubicada en ${otra}` })));
+    const insts = [...(todosInstsData[loc] || []), ...externas];
     if (insts.length === 0) {
         contenedor.innerHTML = `<p style="color:rgba(255,255,255,0.6);font-size:0.8rem;text-align:center;">No hay instituciones registradas para ${loc}</p>`;
         return;

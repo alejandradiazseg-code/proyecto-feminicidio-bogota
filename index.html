@@ -196,7 +196,7 @@
     <div class="hero-content">
         <div class="hero-tag">Semillero OSGeoLAB-UD · Bogotá D.C.</div>
         <h1 class="hero-title">Violencia Feminicida<br><span>y Negligencia Institucional</span></h1>
-        <p class="hero-subtitle">Análisis espacial comparativo entre zonas de Bogotá 2015–2025. Datos integrados de Medicina Legal, SDMujer, Fiscalía General y oferta institucional distrital.</p>
+        <p class="hero-subtitle">Análisis espacial comparativo entre zonas de Bogotá 2015–2025. Datos integrados de Medicina Legal, Fiscalía General, OMEG–SDMujer (incluye asesinatos de la Policía, SIEDCO) y oferta institucional distrital.</p>
         <div class="hero-stats">
             <div>
                 <span class="hero-stat-num" id="hero-homicidios">—</span>
@@ -204,7 +204,7 @@
             </div>
             <div>
                 <span class="hero-stat-num" id="hero-feminicidios">—</span>
-                <span class="hero-stat-label">Feminicidios forenses<br>identificados</span>
+                <span class="hero-stat-label">Feminicidios forenses<br>2018–2024</span>
             </div>
             <div>
                 <span class="hero-stat-num" id="hero-riesgo">—</span>
@@ -232,21 +232,21 @@
                 <div class="kpi-card" style="border-left-color:#c62828;">
                     <div class="kpi-label">Feminicidios forenses</div>
                     <div class="kpi-numero" style="color:#c62828;" id="kpi-feminicidios">—</div>
-                    <div class="kpi-detalle">Clasificados por INMLCF · 2018–2024</div>
+                    <div class="kpi-detalle" id="kpi-feminicidios-detalle">Circunstancia «Feminicidio» (INMLCF, categoría usada desde 2018) · 2018–2024</div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="kpi-card" style="border-left-color:#f57c00;">
-                    <div class="kpi-label">Sin clasificación forense</div>
+                    <div class="kpi-label">Sin circunstancia registrada</div>
                     <div class="kpi-numero" style="color:#f57c00;" id="kpi-sin-info">—</div>
-                    <div class="kpi-detalle">Casos sin circunstancia identificada</div>
+                    <div class="kpi-detalle">Homicidios sin circunstancia registrada (registro incompleto)</div>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="kpi-card" style="border-left-color:#1565c0;">
                     <div class="kpi-label">Peor índice institucional</div>
                     <div class="kpi-numero" style="color:#1565c0; font-size:1.8rem;" id="kpi-peor">—</div>
-                    <div class="kpi-detalle" id="kpi-peor-valor">Casos por institución formal</div>
+                    <div class="kpi-detalle" id="kpi-peor-valor">Homicidios por comisaría o casa de justicia</div>
                 </div>
             </div>
         </div>
@@ -255,9 +255,9 @@
         <div class="hallazgo-fiscalia mt-5">
             <h5><i class="bi bi-search me-2"></i>Hallazgo clave · Cruce con datos de la Fiscalía General de la Nación</h5>
             <p style="font-size:0.9rem; color:#555; margin-bottom:1.5rem;">
-                El cruce entre los homicidios de mujeres registrados por el Instituto Nacional de Medicina Legal (INMLCF)
-                y los procesos tipificados como feminicidio por la Fiscalía General de la Nación (período 2015–2024) revela
-                una brecha estructural de negligencia procesal en Bogotá D.C.:
+                Comparando dos fuentes distintas, los homicidios de mujeres registrados por el Instituto Nacional de Medicina Legal (INMLCF)
+                y las víctimas de feminicidio registradas por la Fiscalía General de la Nación (hechos 2015–2024), se observa
+                una brecha que usamos como indicador de negligencia procesal en Bogotá D.C.:
             </p>
             <div class="row g-3 mb-3">
                 <div class="col-6 col-md-3">
@@ -269,7 +269,7 @@
                 <div class="col-6 col-md-3">
                     <div class="hallazgo-stat">
                         <div class="num" style="color:#c62828;">253</div>
-                        <div class="lbl">Tipificados como<br>feminicidio · Fiscalía</div>
+                        <div class="lbl">Víctimas de feminicidio<br>consumado · Fiscalía</div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
@@ -281,23 +281,21 @@
                 <div class="col-6 col-md-3">
                     <div class="hallazgo-stat">
                         <div class="num" style="color:#6a1b9a;">893</div>
-                        <div class="lbl">Tentativas registradas<br>por la Fiscalía</div>
+                        <div class="lbl">Víctimas de tentativa<br>de feminicidio · Fiscalía</div>
                     </div>
                 </div>
             </div>
             <p style="font-size:0.85rem; color:#555; line-height:1.7;">
-                <strong>¿Qué significa el 24%?</strong> De cada 100 mujeres asesinadas en Bogotá entre 2015 y 2024,
-                la Fiscalía General de la Nación tipificó formalmente como feminicidio solo 24 casos.
-                El <strong>76% restante (800 casos)</strong> no recibió reconocimiento jurídico del componente de género,
-                quedando clasificado bajo otras categorías penales. Esta brecha constituye el indicador más directo
-                de negligencia procesal medible con datos públicos disponibles.<br><br>
-                Adicionalmente, la Fiscalía registró <strong>893 tentativas de feminicidio</strong> en el mismo período
-                (3,5 tentativas por cada caso consumado tipificado), lo que evidencia que el sistema judicial identifica
-                la violencia feminicida en su fase previa, pero no logra prevenirla sistemáticamente.
-                La tasa de tipificación no mostró tendencia de mejora sostenida en los 10 años de vigencia de la
-                <strong>Ley 1761 de 2015</strong> (Ley Rosa Elvira Cely).
+                <strong>¿Qué significa el 24 %?</strong> Por cada 100 mujeres asesinadas en Bogotá entre 2015 y 2024 según Medicina Legal,
+                la Fiscalía registró 24 víctimas de feminicidio. La <strong>diferencia entre las dos fuentes (800)</strong>
+                corresponde a homicidios sin reconocimiento jurídico del componente de género. No todos ellos fueron necesariamente
+                feminicidios, pero la brecha es el indicador más directo de negligencia procesal medible con datos públicos,
+                diez años después de la <strong>Ley 1761 de 2015</strong> (Ley Rosa Elvira Cely).<br><br>
+                Por separado, la Fiscalía registró <strong>893 víctimas de tentativa de feminicidio</strong> en el mismo período.
+                Es una cifra independiente: con los datos públicos no se puede saber si alguna de esas mujeres
+                fue asesinada después.
                 <em style="color:#888;">*Incluye 16 casos sin localidad identificada; por eso el mapa suma 1.037.
-                Fuentes (datos.gov.co, obtenidos el 17 de abril de 2026): Fiscalía General de la Nación ·
+                Fuentes (datos.gov.co, obtenidos el 17 de abril de 2026; unidad: víctimas): Fiscalía General de la Nación ·
                 Conteo de Víctimas V2 (hechos 2015–2024, víctimas de sexo femenino en Bogotá D.C.);
                 INMLCF · Presuntos Homicidios. Colombia, 2015 a 2024. Cifras definitivas (vtub-3de2).
                 Nota: los datos de Fiscalía corresponden al total Bogotá D.C. sin desagregación por localidad.</em>
@@ -320,9 +318,9 @@
                 <div class="panel-filtros mb-3">
                     <div class="panel-titulo"><i class="bi bi-layers me-2"></i>Capa del mapa</div>
                     <button class="btn-capa activo" onclick="cambiarCapa('homicidios', this)"><i class="bi bi-circle-fill me-2" style="color:#9c27b0;"></i>Homicidios de mujeres</button>
-                    <button class="btn-capa" onclick="cambiarCapa('feminicidio', this)"><i class="bi bi-circle-fill me-2" style="color:#c62828;"></i>Feminicidios forenses</button>
-                    <button class="btn-capa" onclick="cambiarCapa('sin-info', this)"><i class="bi bi-circle-fill me-2" style="color:#f57c00;"></i>% Sin clasificación</button>
-                    <button class="btn-capa" onclick="cambiarCapa('via-formal', this)"><i class="bi bi-circle-fill me-2" style="color:#1565c0;"></i>Índice vía formal</button>
+                    <button class="btn-capa" onclick="cambiarCapa('feminicidio', this)"><i class="bi bi-circle-fill me-2" style="color:#c62828;"></i>Feminicidios forenses 2018–2024</button>
+                    <button class="btn-capa" onclick="cambiarCapa('sin-info', this)"><i class="bi bi-circle-fill me-2" style="color:#f57c00;"></i>% Sin circunstancia registrada</button>
+                    <button class="btn-capa" onclick="cambiarCapa('via-formal', this)"><i class="bi bi-circle-fill me-2" style="color:#1565c0;"></i>Desierto institucional</button>
                 </div>
                 <div class="panel-filtros mb-3">
                     <div class="panel-titulo"><i class="bi bi-building me-2"></i>Instituciones</div>
@@ -341,7 +339,8 @@
                 Distribución de los homicidios de mujeres con localidad identificada (INMLCF) según la zona geográfica de Bogotá.
                 Como las zonas agrupan distinto número de localidades, a la derecha se muestra también el
                 <strong>promedio de casos por localidad</strong>, que permite comparar zonas de tamaño diferente.
-                Las cifras son conteos absolutos: deben leerse junto con la población y la oferta institucional de cada territorio.
+                Las cifras de la dona son conteos absolutos; la tasa por 100.000 mujeres (población de mujeres 2025, OMEG–SDMujer)
+                permite compararlas con el tamaño de cada zona.
             </p>
             <div class="row g-4 align-items-center">
                 <div class="col-md-5 col-lg-4">
@@ -384,12 +383,11 @@
             </div>
             <div class="col-lg-5">
                 <div class="chart-card">
-                    <div class="chart-titulo"><i class="bi bi-bar-chart-horizontal me-2"></i>Top 10 · Índice de desierto institucional (vía formal)</div>
+                    <div class="chart-titulo"><i class="bi bi-bar-chart-horizontal me-2"></i>Top 10 · Índice de desierto institucional</div>
                     <p class="chart-contexto">
-                        Este índice mide cuántos homicidios de mujeres acumula cada institución formal de denuncia
-                        (Comisaría de Familia + Casa de Justicia) en el período 2015–2024.
-                        <strong>Un índice más alto indica mayor presión sobre el sistema formal</strong> y menor
-                        disponibilidad institucional relativa. El color de cada barra corresponde a la zona.
+                        Compara los homicidios de mujeres 2015–2024 de cada localidad con el número de comisarías de familia
+                        y casas de justicia ubicadas en ella. No son casos atendidos por esas entidades:
+                        <strong>un índice más alto indica menos oferta institucional frente a la violencia registrada</strong>. El color de cada barra corresponde a la zona.
                         <span style="color:#ef5350;">■</span> Sur &nbsp;
                         <span style="color:#29b6f6;">■</span> Norte &nbsp;
                         <span style="color:#ffa726;">■</span> Centro
@@ -426,12 +424,12 @@
                     <div class="indicador-numero" style="color:#6a1b9a;" id="ind-via-formal">—</div>
                     <div class="indicador-nombre" style="color:#6a1b9a;">Índice de desierto institucional</div>
                     <div class="indicador-desc">
-                        Mide cuántos homicidios de mujeres (2015–2024) debe absorber, en promedio,
-                        cada institución formal de la ruta de denuncia (Comisarías de Familia + Casas de Justicia)
-                        en una localidad. Un valor alto indica que la oferta institucional es
-                        insuficiente frente a la magnitud de la violencia registrada.
+                        Homicidios de mujeres (2015–2024) de una localidad frente al número de comisarías de familia
+                        y casas de justicia ubicadas dentro de ella. No son casos atendidos por esas entidades:
+                        un valor alto indica poca oferta institucional frente a la violencia registrada.
+                        Si la localidad no tiene ninguna, el índice no se puede calcular (división por cero).
                     </div>
-                    <div class="indicador-formula">Fórmula: homicidios 2015–2024 ÷ (N° Comisarías + N° Casas de Justicia)</div>
+                    <div class="indicador-formula">Fórmula: homicidios 2015–2024 ÷ (N.º comisarías + N.º casas de justicia en la localidad)</div>
                     <div class="indicador-peor" id="ind-via-formal-peor">—</div>
                     <div class="indicador-mejor" id="ind-via-formal-mejor">—</div>
                 </div>
@@ -445,12 +443,12 @@
                     <div class="indicador-nombre" style="color:#c62828;">Índice de negligencia forense</div>
                     <div class="indicador-desc">
                         Porcentaje de homicidios de mujeres en los que el INMLCF no pudo
-                        determinar la circunstancia del hecho (campo "sin información").
-                        Un porcentaje alto refleja vacíos sistemáticos en el registro forense
+                        registrar la circunstancia del hecho (valor «Sin información» en la fuente).
+                        Un porcentaje alto indica un registro incompleto
                         y dificulta la tipificación jurídica del feminicidio.
-                        Bogotá total: <strong>62 %</strong> de los casos sin circunstancia identificada (646 de 1.037).
+                        Bogotá total: <strong>62 %</strong> de los homicidios sin circunstancia registrada (646 de 1.037 con localidad identificada).
                     </div>
-                    <div class="indicador-formula">Fórmula: casos "sin información" ÷ total homicidios × 100</div>
+                    <div class="indicador-formula">Fórmula: homicidios «Sin información» ÷ total homicidios × 100</div>
                     <div class="indicador-peor" id="ind-sin-info-peor">—</div>
                     <div class="indicador-mejor" id="ind-sin-info-mejor">—</div>
                 </div>
@@ -462,14 +460,15 @@
                     <div class="indicador-icono" style="background:#e8f5e9;">⚠️</div>
                     <div class="indicador-numero" style="color:#2e7d32;" id="ind-brecha">—</div>
                     <div class="indicador-nombre" style="color:#2e7d32;">Brecha alerta–muerte</div>
+                    <div style="font-size:0.78rem;color:#2e7d32;margin-top:-0.3rem;">asesinatos por cada 100 mujeres valoradas en riesgo</div>
                     <div class="indicador-desc">
-                        Relación entre los asesinatos de mujeres (Policía, SIEDCO) y las mujeres valoradas
-                        en riesgo de feminicidio por Medicina Legal en cada localidad (OMEG–SDMujer, 2025).
-                        Una razón alta indica que, donde el sistema ya conoce situaciones de riesgo, la violencia
-                        letal persiste. Con datos públicos no es posible saber si cada víctima estaba previamente
+                        Asesinatos de mujeres por cada 100 mujeres valoradas en riesgo de feminicidio, en cada localidad (2025).
+                        Es una razón entre dos poblaciones distintas, no el porcentaje de mujeres en riesgo que fueron asesinadas.
+                        Asesinatos: Policía Nacional (SIEDCO); valoraciones de riesgo: Medicina Legal; ambos publicados por el OMEG–SDMujer.
+                        Un valor alto señala localidades donde, pese a conocerse situaciones de riesgo, hubo más asesinatos en proporción. Con datos públicos no es posible saber si cada víctima estaba previamente
                         identificada: ese cruce es justamente uno de los vacíos que la base de datos propuesta resolvería.
                     </div>
-                    <div class="indicador-formula">Fórmula: asesinatos 2025 ÷ mujeres valoradas en riesgo 2025 × 100</div>
+                    <div class="indicador-formula">Fórmula: asesinatos 2025 ÷ mujeres valoradas en riesgo 2025 × 100 (asesinatos por cada 100 en riesgo)</div>
                     <div class="indicador-peor" id="ind-brecha-peor">—</div>
                     <div class="indicador-mejor" id="ind-brecha-mejor">—</div>
                 </div>
@@ -488,12 +487,12 @@
                         nocturno para las mujeres en vías, arterias y ciclorrutas de Bogotá, considerando variables como
                         <strong>cobertura de iluminación pública</strong>, visibilidad, presencia de personas, acceso a transporte
                         público y senderos seguros. A mayor índice (escala 1–5), mejores condiciones de seguridad nocturna.
-                        Entre 2015 y 2019, la <strong>Zona Sur</strong> fue la que más mejoró en este indicador (+0,95 puntos),
-                        superando en 2019 el índice de la Zona Norte (+0,69). <span style="color:#888;">(Promedio por zona del índice de cada localidad, escala 1–5.)</span> Sin embargo, esta mejora en infraestructura
-                        no se tradujo en una reducción equivalente de homicidios de mujeres en el Sur,
-                        lo que sugiere que <strong>mejorar el espacio público no basta</strong>: buena parte de la violencia
-                        feminicida ocurre en el ámbito privado, donde la protección depende de que la
-                        <strong>ruta institucional</strong> (denuncia, medida de protección y seguimiento) funcione. <em style="color:#888;">Fuente: Secretaría Distrital de la Mujer · Cortes 2015 y 2019.
+                        Entre 2015 y 2019 (última medición), el índice de la <strong>Zona Sur</strong> subió +0,95 puntos en la escala de 1 a 5,
+                        más que el de la Zona Norte (+0,69). <span style="color:#888;">(Promedio por zona del índice de cada localidad.)</span>
+                        Sin embargo, los homicidios de mujeres en el Sur siguieron siendo los más altos de la ciudad.
+                        Esto no prueba una causa, pero es coherente con que buena parte de la violencia feminicida ocurre en el ámbito
+                        privado, donde la protección depende de que la <strong>ruta institucional</strong>
+                        (denuncia, medida de protección y seguimiento) funcione. <em style="color:#888;">Fuente: Secretaría Distrital de la Mujer · Cortes 2015 y 2019.
                         Última medición disponible: septiembre 2019.</em>
                     </p>
                 </div>
@@ -513,8 +512,8 @@
                 <p style="font-size:0.92rem; line-height:1.8; color:#444;">
                     Nuestra hipótesis es que muchos feminicidios pudieron estar precedidos por alertas a las
                     instituciones (reportes, denuncias o medidas de protección) que no tuvieron una respuesta oportuna.
-                    Sin embargo, cada entidad registra su parte por separado y ninguna publica la información de forma
-                    que pueda cruzarse. Por eso la negligencia es evidente en los hechos, pero <strong>invisible en los datos</strong>.
+                    Sin embargo, cada entidad registra su parte por separado y ninguna publica sus datos de forma
+                    que puedan cruzarse. Por eso, si esa negligencia existe, hoy es <strong>invisible en los datos</strong>.
                 </p>
                 <p style="font-size:0.92rem; line-height:1.8; color:#444;">
                     Este observatorio se apoya en una <strong>base de datos espacial de 30 tablas</strong>
@@ -524,7 +523,7 @@
                     las alimenten, y así responder preguntas que hoy nadie puede contestar.
                 </p>
                 <p style="font-size:0.85rem; line-height:1.7; color:#666; font-style:italic;">
-                    Indicios en los datos públicos: 893 tentativas de feminicidio, 2.766 mujeres valoradas en riesgo en 2025
+                    Indicios en los datos públicos: 893 víctimas de tentativa de feminicidio (Fiscalía), 2.766 mujeres valoradas en riesgo en 2025
                     y 62 % de homicidios sin circunstancia registrada.
                 </p>
             </div>
@@ -570,12 +569,12 @@
                 <div class="prevencion-card">
                     <div class="prevencion-icono">🔴</div>
                     <div class="prevencion-titulo">Señales de alerta identificadas</div>
-                    <p class="prevencion-texto mb-3">El análisis forense de Medicina Legal identificó estas circunstancias en los homicidios de mujeres en Bogotá (dataset vtub-3de2, 2015–2024):</p>
+                    <p class="prevencion-texto mb-3">Medicina Legal registró estas circunstancias en los 1.037 homicidios de mujeres con localidad identificada en Bogotá (vtub-3de2, 2015–2024; la categoría «Feminicidio» se usa desde 2018):</p>
                     <div class="alerta-señal">👫 Violencia de pareja: <strong>79 casos</strong></div>
                     <div class="alerta-señal">⚡ Feminicidio explícito: <strong>77 casos</strong></div>
                     <div class="alerta-señal">💔 Conflicto de pareja: <strong>12 casos</strong></div>
                     <div class="alerta-señal">🔞 Violencia sexual: <strong>3 casos</strong></div>
-                    <p class="prevencion-texto mt-3" style="font-style:italic;">El 62 % de los casos carece de clasificación de circunstancia, lo que representa un vacío de información forense sistemático que impide la correcta tipificación jurídica.</p>
+                    <p class="prevencion-texto mt-3" style="font-style:italic;">El 62 % de los homicidios no tiene circunstancia registrada: es un registro incompleto que dificulta la tipificación jurídica.</p>
                 </div>
             </div>
             <div class="col-lg-4">
@@ -583,11 +582,11 @@
                     <div class="prevencion-icono">📋</div>
                     <div class="prevencion-titulo">Recomendaciones derivadas del análisis</div>
                     <div class="prevencion-texto">
-                        <p class="mb-2">🏛️ <strong>Rafael Uribe Uribe, Ciudad Bolívar y Santa Fe</strong> presentan los mayores índices de desierto institucional, y <strong>La Candelaria</strong> no cuenta con ninguna Comisaría ni Casa de Justicia. Se recomienda aumentar la oferta de Comisarías y Casas de Justicia en estas localidades.</p>
+                        <p class="mb-2">🏛️ <strong>Rafael Uribe Uribe, Ciudad Bolívar y Santa Fe</strong> presentan los mayores índices de desierto institucional, y <strong>La Candelaria</strong> no tiene comisarías ni casas de justicia dentro de su límite. Se recomienda aumentar la oferta de Comisarías y Casas de Justicia en estas localidades.</p>
                         <p class="mb-2">📊 <strong>Barrios Unidos y Chapinero</strong> presentan la mayor relación entre asesinatos y mujeres valoradas en riesgo en 2025 (sobre pocos casos, por lo que debe leerse con cautela). Se recomienda revisar el seguimiento a mujeres con alertas activas.</p>
-                        <p class="mb-2">📝 <strong>El 62 % de casos sin clasificación</strong> requiere protocolos forenses estandarizados con perspectiva de género en todas las localidades.</p>
-                        <p class="mb-2">⚖️ <strong>La Candelaria</strong> es la única localidad urbana sin Comisaría de Familia, lo que representa un vacío institucional crítico.</p>
-                        <p>⚡ <strong>Solo el 24% de los homicidios</strong> de mujeres fue tipificado como feminicidio por la Fiscalía en 10 años de vigencia de la Ley 1761 de 2015. Se requiere fortalecimiento institucional para la aplicación efectiva del tipo penal.</p>
+                        <p class="mb-2">📝 <strong>El 62 % de homicidios sin circunstancia registrada</strong> requiere protocolos forenses estandarizados con perspectiva de género en todas las localidades.</p>
+                        <p class="mb-2">⚖️ <strong>La Candelaria</strong> es la única localidad sin comisaría ni casa de justicia en su territorio: la Comisaría de Familia La Candelaria funciona en Santa Fe (KR 2 4 10). Con 8.108 mujeres, su tasa de homicidios (8,6 por 100.000 al año) es la 3.ª más alta de Bogotá.</p>
+                        <p>⚡ <strong>Por cada 100 mujeres asesinadas</strong> (Medicina Legal), la Fiscalía registró 24 víctimas de feminicidio en los 10 años de vigencia de la Ley 1761 de 2015. Se requiere fortalecimiento institucional para la aplicación efectiva del tipo penal.</p>
                     </div>
                 </div>
             </div>
@@ -630,7 +629,7 @@
             <div class="col-md-4">
                 <h6>Fuentes de datos</h6>
                 <p>IDECA · Datos Abiertos Bogotá<br>
-                Medicina Legal (INMLCF) · OMEG-SDMujer<br>
+                Medicina Legal (INMLCF) · OMEG-SDMujer (con datos de Policía, SIEDCO)<br>
                 Fiscalía General de la Nación · Datos Abiertos Colombia</p>
             </div>
             <div class="col-md-4">
