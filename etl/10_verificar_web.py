@@ -164,9 +164,8 @@ esperado = {
     "Violencia sexual": f"Violencia sexual: {circ.get('Violencia sexual', 0)} casos",
     "Seguridad nocturna Sur 2015→2019": f"+{es(cambio['Sur'], 2)} puntos",
     "Seguridad nocturna Norte 2015→2019": f"(+{es(cambio['Norte'], 2)})",
-    "Población de mujeres La Candelaria": f"Con {es(pob['La Candelaria'])} mujeres",
-    "Tasa La Candelaria": f"({es(tasa['La Candelaria'], 1)} por 100.000 al año)",
-    "Puesto de La Candelaria por tasa": f"es la {rank_candelaria}.ª más alta",
+    "Homicidios La Candelaria": f"Sus {desierto['La Candelaria']['hom']} homicidios se cuentan por lugar del hecho",
+    "Tasa La Candelaria": f"({es(tasa['La Candelaria'], 1)} por 100.000 mujeres residentes al año)",
 }
 for nombre, valor in esperado.items():
     check(valor in texto, f"{nombre}: «{valor}»")
@@ -179,7 +178,7 @@ print("\n5. Cifras y frases desactualizadas que no deben aparecer")
 for viejo in ["63%", "+0.89", "+0.74", "Violencia de pareja: 80", "89 casos en Bogotá total", "Padilla",
               "112 440",  # línea no verificable, reemplazada por la Línea Púrpura
               "Índice vía formal", "procesos tipificados", "tendencia de mejora sostenida",
-              "3,5 tentativas", "casi un punto", "Ver directorio"]:
+              "3,5 tentativas", "casi un punto", "Ver directorio", "es la 3.ª más alta"]:
     check(viejo not in texto, f"no aparece «{viejo}»")
 
 # ---------------------------------------------------------------------------
