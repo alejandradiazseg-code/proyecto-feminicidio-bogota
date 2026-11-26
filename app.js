@@ -213,7 +213,7 @@ function pintarLocalidades(geojson) {
                     <hr style="margin:8px 0;">
                     <table style="width:100%;font-size:0.82rem;">
                         <tr><td>🔪 Homicidios 2015–2024</td><td><b>${n.homicidios_total || 0}</b></td></tr>
-                        <tr><td>📈 Tasa anual por 100.000 mujeres</td><td><b>${d.tasa_anual_100k != null ? fmtNum(d.tasa_anual_100k, 1) : '—'}</b></td></tr>
+                        <tr><td>📈 Tasa anual por 100.000 residentes*</td><td><b>${d.tasa_anual_100k != null ? fmtNum(d.tasa_anual_100k, 1) : '—'}</b></td></tr>
                         <tr><td>⚡ Feminicidios forenses 2018–2024</td><td><b>${n.feminicidios_forenses || 0}${n.pct_feminicidio_explicito != null ? ` (${fmtNum(n.pct_feminicidio_explicito, 1)} %)` : ''}</b></td></tr>
                         <tr><td>❓ Sin circunstancia registrada</td><td><b>${n.sin_clasificacion || 0} (${fmtNum(n.pct_sin_clasificacion || 0, 1)} %)</b></td></tr>
                         <tr><td>📊 Desierto institucional</td><td><b>${d.casos_por_via_formal != null ? fmtNum(d.casos_por_via_formal, 1) : 'no calculable (0 puntos)'}</b></td></tr>
@@ -221,6 +221,7 @@ function pintarLocalidades(geojson) {
                         <tr><td>👥 En riesgo 2025</td><td><b>${b.mujeres_en_riesgo_2025 || 0}</b></td></tr>
                         <tr><td>💀 Asesinadas 2025</td><td><b>${b.asesinadas_2025 || 0}</b></td></tr>
                     </table>
+                    <small style="color:#888;">* Casos por lugar del hecho ÷ mujeres residentes: aproximación.</small>
                     <hr style="margin:8px 0;">
                     <small style="color:#666;">🏛 Comisarías: ${d.comisarias || 0} · ⚖️ Casas Justicia: ${d.casas_justicia || 0} · 🤝 Igualdad: ${d.casas_igualdad || 0} · 🚓 CAI: ${d.cais || 0}</small>
                 </div>
@@ -371,7 +372,7 @@ function dibujarChartZonas(datosApi) {
                 <span class="zona-nombre"><span class="zona-badge" style="background:${COLORES_ZONA[d.zona]};"></span>${d.zona}</span>
                 <span class="zona-barra" title="${pct(d.total_casos)}"><span style="width:${d.total_casos / max * 100}%;background:${COLORES_ZONA[d.zona]};"></span></span>
                 <span class="zona-cifras"><strong>${fmtNum(d.total_casos)}</strong> · ${pct(d.total_casos)}
-                    <small>${fmtNum(prom, 1)} por localidad (${d.num_localidades} ${d.num_localidades === 1 ? "localidad" : "localidades"})</small>${tasa != null ? `<small>tasa anual: ${fmtNum(tasa, 1)} por 100.000 mujeres</small>` : ""}</span>
+                    <small>${fmtNum(prom, 1)} por localidad (${d.num_localidades} ${d.num_localidades === 1 ? "localidad" : "localidades"})</small>${tasa != null ? `<small>tasa anual aprox.: ${fmtNum(tasa, 1)} por 100.000 residentes</small>` : ""}</span>
             </div>`;
         }).join("");
 
@@ -400,8 +401,9 @@ function lecturaTasas(datos) {
     const urb = datos.filter(d => d.zona !== "Rural" && tasaAnual(d) != null)
                      .sort((a, b) => tasaAnual(b) - tasaAnual(a));
     if (urb.length < 2) return "";
-    return `En proporción a la población (tasa anual por 100.000 mujeres): ` +
-        urb.map(d => `${d.zona} ${fmtNum(tasaAnual(d), 1)}`).join(", ") + ". ";
+    return `Tasa anual aproximada por 100.000 mujeres residentes: ` +
+        urb.map(d => `${d.zona} ${fmtNum(tasaAnual(d), 1)}`).join(", ") +
+        ` (casos por lugar del hecho: en el Centro la población flotante la eleva). `;
 }
 
 // ── FORMATO (es-CO) ───────────────────────────────────────
